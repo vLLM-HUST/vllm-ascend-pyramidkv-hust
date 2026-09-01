@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.2-experimental",
+  "extension_id": "org.vllm-hust.ascend-pyramidkv",
+  "extension_version": "0.1.0.dev0",
+  "kind": "in_process_plugin",
+  "host": {
+    "provider": "vllm",
+    "name": "vllm",
+    "version_range": "==0.23.0"
+  },
+  "runtime": {
+    "type": "python",
+    "process_scope": "vllm-processes",
+    "isolation": "trusted_in_process"
+  },
+  "lifecycle_owner": "vllm",
+  "protocols": [
+    {
+      "name": "vllm.kv-cache-compression.transactional",
+      "version_range": ">=1,<2"
+    }
+  ],
+  "implementation": [
+    {
+      "type": "python_module",
+      "module": "vllm_ascend_pyramidkv",
+      "object": "PyramidKVContractProposal",
+      "status": "import_only"
+    }
+  ],
+  "requires_services": [],
+  "components": [
+    {
+      "component_id": "pyramidkv-provider",
+      "contracts": ["vllm.kv-cache-compression.transactional.v1"],
+      "execution_planes": ["scheduler", "worker", "device"],
+      "isolation": "trusted_in_process",
+      "implementation_ref": "vllm_ascend_pyramidkv:PyramidKVContractProposal",
+      "permissions": ["device_access"]
+    }
+  ],
+  "activation": {
+    "entry_points": [],
+    "environment": {},
+    "additional_config": {}
+  }
+}
