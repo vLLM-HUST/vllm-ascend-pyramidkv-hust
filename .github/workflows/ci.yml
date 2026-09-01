@@ -1,0 +1,43 @@
+name: Extension CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install extension manager and package
+        run: |
+          python -m pip install \
+            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
+          python -m pip install -e ".[test]" build
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest -q
+      - run: python -m build
+      - name: Verify descriptor remains fail closed
+        run: |
+          vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
+          python - <<'PY'
+          from pathlib import Path
+
+          import vllm_ascend_pyramidkv
+          from vllm_hust_ext.manifest import activation_blocker, load_manifest
+
+          manifest = load_manifest(
+              Path(vllm_ascend_pyramidkv.__file__).with_name(
+                  "vllm-hust-extension-v0.2.json"
+              )
+          )
+          assert activation_blocker(manifest) is not None
+          PY
