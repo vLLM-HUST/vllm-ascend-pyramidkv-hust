@@ -51,9 +51,10 @@ type boundaries needed to make the new package independently importable.
 | `tests/ut/kv_cache_compression/test_pyramidkv.py` | `385371776af02a359f94b48cd5f43fe32fa9c832` | `tests/` | CPU-safe algorithm, compatibility, state, and registry semantics restored |
 | `tests/ut/kv_cache_compression/test_registry.py` | `d776b7e7f7aab40778febce85c6d553c8ed1b266` | `tests/test_registry.py` | Registry fail-closed semantics restored |
 
-The frozen schema-v1 data classes in `legacy_contracts.py` derive from the
-Apache-2.0 provider-neutral contract in Core PR #232. They exist only for
-migration testing and do not assert that the current host exports that API.
+The fallback schema-v1 data classes in `legacy_contracts.py` derive from the
+Apache-2.0 provider-neutral contract in Core PR #232. Standalone tests use
+them when vLLM is absent; active installations resolve the canonical classes
+from the paired current host through `contracts.py`.
 
 The initial extracted and formatted `provider.py` has SHA-256
 `949e6a2f612618e19b35372402ce140bb0f3fced8a3401e3a4854df6ba210c16`.
@@ -75,11 +76,16 @@ repository's Hugging Face patches, CUDA, Triton, or custom kernels. See
 
 Historical 910B2, LongBench, and online-serving artifacts remain legacy
 supporting evidence. They must not be presented as results of this repository's
-current head. A runnable alpha requires a clean installed artifact, an exact
-host/provider commit pair, raw real-device evidence, and verified disable,
-restart, uninstall, and rollback behavior.
+current head. Stable release promotion requires a clean installed artifact, an
+exact host/provider commit trio, raw real-device evidence, and verified
+disable, restart, uninstall, and rollback behavior.
 
 The public historical subset is documented under
 `evidence/legacy/2026-08-13-ascend910b2/`. Its provenance, performance, and
 quality JSON files are byte-identical copies of the retained final matched
 evidence, with source SHA-256 values recorded in the accompanying report.
+
+The current provider-only grouped-GQA oracle is recorded separately under
+`evidence/current/2026-09-03-provider-npu/`. Its tested file hashes bind the
+result to the working-tree algorithm and oracle, and its limitations explicitly
+exclude paired-host, quality, capacity, and performance claims.

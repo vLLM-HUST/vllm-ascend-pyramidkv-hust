@@ -355,3 +355,31 @@ def test_cann_8_graph_mode_is_rejected() -> None:
 
     assert not report.supported
     assert any("graph execution requires CANN 9.0" in reason for reason in report.reasons)
+
+
+@pytest.mark.parametrize(
+    ("enforce_eager", "cudagraph_mode"),
+    [(True, "NONE"), (False, "PIECEWISE")],
+)
+def test_unvalidated_current_host_cann_9_1_fails_closed(
+    enforce_eager: bool,
+    cudagraph_mode: str,
+) -> None:
+    config = _core_config()
+    provider = PyramidKVAscendProvider.from_core_config(config)
+    report = provider.compatibility_report(
+        config,
+        _context(
+            cann_version="9.1.0",
+            enforce_eager=enforce_eager,
+            cudagraph_mode=cudagraph_mode,
+            chunked_prefill=False,
+        ),
+        "factory",
+    )
+
+    assert not report.supported
+    assert any(
+        "CANN version must start" in reason or "graph execution requires CANN 9.0" in reason
+        for reason in report.reasons
+    )

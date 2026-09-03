@@ -1,12 +1,12 @@
 {
   "schema_version": "0.2-experimental",
   "extension_id": "org.vllm-hust.ascend-pyramidkv",
-  "extension_version": "0.1.0.dev0",
+  "extension_version": "0.2.0.dev0",
   "kind": "in_process_plugin",
   "host": {
     "provider": "vllm",
     "name": "vllm",
-    "version_range": "==0.23.0"
+    "version_range": ">=0.27.1,<0.28"
   },
   "runtime": {
     "type": "python",
@@ -25,7 +25,7 @@
       "type": "python_module",
       "module": "vllm_ascend_pyramidkv",
       "object": "PyramidKVContractProposal",
-      "status": "import_only"
+      "status": "active"
     }
   ],
   "requires_services": [],
@@ -40,7 +40,12 @@
     }
   ],
   "activation": {
-    "entry_points": [],
+    "entry_points": [
+      {
+        "group": "vllm_ascend.kv_cache_compression_providers",
+        "name": "pyramidkv_ascend"
+      }
+    ],
     "environment": {},
     "additional_config": {}
   }

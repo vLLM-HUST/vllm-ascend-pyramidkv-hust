@@ -33,6 +33,7 @@ The provider-neutral Ascend boundary must cover:
    metadata; and
 5. graph-safe metadata for validated decode-only capture modes.
 
-The extension must not monkey-patch private model-runner or attention classes
-to emulate these responsibilities. Until reviewed host interfaces exist, the
-manifest stays `import_only` and there is no `vllm.general_plugins` entry point.
+The extension does not monkey-patch private model-runner or attention classes.
+The paired host branches expose these responsibilities directly, so the active
+manifest registers only the dedicated Ascend provider entry point and does not
+claim the broad `vllm.general_plugins` namespace.

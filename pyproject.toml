@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vllm-ascend-pyramidkv-hust"
-version = "0.1.0.dev0"
+version = "0.2.0.dev0"
 description = "Owner-maintained PyramidKV migration package for the vLLM-HUST Ascend stack"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,9 @@ test = [
 
 [project.entry-points."vllm_hust.extension_bundles"]
 "org.vllm-hust.ascend-pyramidkv" = "vllm_ascend_pyramidkv"
+
+[project.entry-points."vllm_ascend.kv_cache_compression_providers"]
+pyramidkv_ascend = "vllm_ascend_pyramidkv.registry:get_kv_cache_compression_provider"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vllm_ascend_pyramidkv"]
