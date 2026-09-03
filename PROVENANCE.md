@@ -78,3 +78,8 @@ supporting evidence. They must not be presented as results of this repository's
 current head. A runnable alpha requires a clean installed artifact, an exact
 host/provider commit pair, raw real-device evidence, and verified disable,
 restart, uninstall, and rollback behavior.
+
+The public historical subset is documented under
+`evidence/legacy/2026-08-13-ascend910b2/`. Its provenance, performance, and
+quality JSON files are byte-identical copies of the retained final matched
+evidence, with source SHA-256 values recorded in the accompanying report.
