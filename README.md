@@ -56,3 +56,4 @@ See:
 - [host contract](docs/host-contract.md)
 - [install and rollback](docs/install-and-rollback.md)
 - [legacy evidence inventory](evidence/legacy/README.md)
+- [public historical Ascend 910B2 result](evidence/legacy/2026-08-13-ascend910b2/README.md)
