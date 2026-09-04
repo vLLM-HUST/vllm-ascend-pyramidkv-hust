@@ -3,10 +3,9 @@
 """Frozen schema-v1 values used to verify the legacy provider baseline.
 
 These data classes mirror the provider-neutral contract merged by legacy Core
-PR #232. They make the extracted provider independently importable and
-testable; they are not a replacement for a current host contract. The package
-manifest remains ``import_only`` until an active host exports an equivalent
-versioned interface and an adapter translates these values at that boundary.
+PR #232. They keep the extracted provider independently importable and
+testable when vLLM is absent; an active installation resolves the canonical
+schema from the host through :mod:`vllm_ascend_pyramidkv.contracts`.
 """
 
 from __future__ import annotations

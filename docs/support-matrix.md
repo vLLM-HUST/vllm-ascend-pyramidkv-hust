@@ -1,8 +1,8 @@
 # Support matrix
 
-This matrix separates the recovered historical profile from current package
-claims. The current package is `import_only`; every runtime combination is
-therefore pending rather than supported.
+This matrix separates the recovered historical profile from current active
+alpha claims. CPU contract coverage is available; exact-head NPU validation is
+still required before release promotion.
 
 ## Historical baseline
 
@@ -43,9 +43,11 @@ ordinary path; admission began above that boundary.
 | --- | --- |
 | Package installation and metadata inspection | Available |
 | Offline CPU algorithm and compatibility tests | Available |
-| Extension Manager enablement | Blocked by `import_only` manifest |
-| Current vLLM-HUST host integration | Pending provider-neutral host contract |
-| Current vLLM-Ascend-HUST integration | Pending provider-neutral Ascend hook |
+| Current-head Qwen grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9 |
+| Extension descriptor activation | Available |
+| Current vLLM-HUST host integration | Implemented on paired development branch |
+| Current vLLM-Ascend-HUST integration | Implemented on paired development branch |
+| CANN 9.1 used by current Ascend main | Fail-closed until exact-head NPU validation |
 | Exact-head NPU correctness | Pending |
 | Exact-head quality/capacity/performance | Pending |
 | Alpha release | Blocked |

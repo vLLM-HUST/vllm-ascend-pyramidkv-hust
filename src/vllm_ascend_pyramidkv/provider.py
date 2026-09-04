@@ -7,9 +7,10 @@ semantics described by KVCache-Factory at commit
 fc6f8f4c3d8ca7a1849a2ef67ff5fca8d285a6f0 (MIT). It does not import or copy
 that repository's Hugging Face patches, CUDA, Triton, or custom kernels.
 
-The migration package keeps this implementation together while its historical
-host contract is rebuilt. Importing this module does not activate or patch
-vLLM. Host-only imports remain isolated in ``_capability_context_from_worker``.
+The extension keeps the algorithm outside the host repositories and activates
+it only through the versioned Core and Ascend contracts. Importing this module
+does not activate or patch vLLM. Host-only imports remain isolated in
+``_capability_context_from_worker``.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 
-from vllm_ascend_pyramidkv.legacy_contracts import (
+from vllm_ascend_pyramidkv.contracts import (
     KVCacheCompressionCompatibility,
     KVCacheCompressionConfigLike,
     KVCacheCompressionPlan,
@@ -1034,6 +1035,10 @@ class PyramidKVAscendProvider:
                 f"PyramidKV layer indices must be contiguous from zero, got {tuple(sorted(indices.values()))}"
             )
         return indices
+
+    def get_layer_indices(self, layer_names: tuple[str, ...]) -> dict[str, int]:
+        """Return the validated layer-to-metadata-row mapping for the host."""
+        return self._layer_indices(layer_names)
 
     def build_attention_batch_view(
         self,

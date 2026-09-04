@@ -1,7 +1,6 @@
 # Install, inspect, and rollback
 
-This document applies to the migration baseline. It installs an inspectable
-descriptor and offline provider code; it does not enable serving.
+This document applies to the active alpha and its paired schema-v1 hosts.
 
 ## Clean installation
 
@@ -14,8 +13,10 @@ python -m pip install /path/to/vllm-ascend-pyramidkv-hust
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```
 
-Inspection must report an `import_only` implementation. Extension enablement
-must be refused; a successful activation is a failure at this stage.
+Inspection must report an `active` implementation and the
+`pyramidkv_ascend` provider entry point. Activation remains explicit: add
+`--kv-cache-compression-config` to a new vLLM process. Omitting that option
+preserves the default host path and does not load the provider implementation.
 
 ## Offline development tests
 
@@ -27,12 +28,18 @@ python -m pip install pytest ruff
 pytest -q /path/to/vllm-ascend-pyramidkv-hust/tests
 ```
 
+The real-device selection oracle is opt-in so ordinary package tests never
+claim or consume an NPU implicitly:
+
+```bash
+ASCEND_RT_VISIBLE_DEVICES=0 PYRAMIDKV_RUN_NPU_TESTS=1 \
+  pytest -q tests/npu/test_selection.py
+```
+
 ## Disable and rollback
 
-The migration package registers no vLLM runtime entry point and changes no host
-source file, environment variable, model artifact, or cache. Consequently,
-rollback consists only of removing the distribution and starting a new host
-process:
+Stop the serving process, remove `--kv-cache-compression-config`, uninstall the
+provider distribution, and start a new process:
 
 ```bash
 python -m pip uninstall -y vllm-ascend-pyramidkv-hust
@@ -43,6 +50,5 @@ assert importlib.util.find_spec("vllm_ascend_pyramidkv") is None
 PY
 ```
 
-When active integration is added, this document must be expanded with an
-Extension Manager disable/forget sequence, next-process fallback proof, host
-configuration cleanup, and exact-version rollback procedure.
+The provider owns no external service or persistent cache data. Rollback does
+not require data migration.
