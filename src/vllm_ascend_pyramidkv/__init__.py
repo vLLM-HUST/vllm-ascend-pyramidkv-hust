@@ -2,8 +2,8 @@
 """PyramidKV Ascend migration package.
 
 The top-level module intentionally imports neither PyTorch nor vLLM and never
-imports PyTorch or vLLM. Runtime activation is performed lazily by the Ascend
-host only when Core configuration selects this provider.
+activates the provider. Runtime registration remains blocked until the shared
+KV-compression host accepts the required query-observation contract.
 """
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ __version__ = "0.2.0.dev0"
 
 
 class PyramidKVContractProposal:
-    """Descriptor carrier for the transactional host contract."""
+    """Descriptor-only proposal for the future method contract."""
 
 
 def get_provider(config: Any) -> Any:
     """Lazily load the migration provider for offline verification.
 
-    The Ascend host reaches the same factory through the provider entry point.
+    This helper is for standalone tests and does not register with a host.
     """
 
     from vllm_ascend_pyramidkv.registry import (

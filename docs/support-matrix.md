@@ -1,8 +1,8 @@
 # Support matrix
 
-This matrix separates the recovered historical profile from current active
-alpha claims. CPU contract coverage is available; exact-head NPU validation is
-still required before release promotion.
+This matrix separates the recovered historical profile from the current
+capability preview. CPU coverage and a provider-only NPU oracle are available;
+there is no current serving support claim.
 
 ## Historical baseline
 
@@ -44,10 +44,12 @@ ordinary path; admission began above that boundary.
 | Package installation and metadata inspection | Available |
 | Offline CPU algorithm and compatibility tests | Available |
 | Current-head Qwen grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9 |
-| Extension descriptor activation | Available |
-| Current vLLM-HUST host integration | Implemented on paired development branch |
-| Current vLLM-Ascend-HUST integration | Implemented on paired development branch |
-| CANN 9.1 used by current Ascend main | Fail-closed until exact-head NPU validation |
+| Extension descriptor activation | Blocked (`import_only`) |
+| Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
+| Shared lifecycle candidate | `vllm-ascend-kvcompress-hust` |
+| External method interface | Blocked on query-window observation ([issue #3](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3)) |
+| CANN 9.1 + Qwen3.5 hybrid target | Unsupported; fail closed pending interface and serving validation |
+| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Unsupported as a combined configuration |
 | Exact-head NPU correctness | Pending |
 | Exact-head quality/capacity/performance | Pending |
 | Alpha release | Blocked |

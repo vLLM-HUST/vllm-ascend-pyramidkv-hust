@@ -20,6 +20,6 @@ def test_docs_keep_release_claims_gated_on_exact_head_evidence() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     matrix = (ROOT / "docs" / "support-matrix.md").read_text(encoding="utf-8")
 
-    assert "active development alpha" in readme
-    assert "exact-head NPU validation is pending" in readme
+    assert "capability preview, not a runnable alpha" in readme
+    assert "query-window observation" in readme
     assert "Alpha release | Blocked" in matrix

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Resolve schema-v1 values from an active host with a standalone fallback."""
+"""Resolve schema-v1 values for migration tests with a standalone fallback."""
 
 try:
     from vllm.config.kv_cache_compression import (

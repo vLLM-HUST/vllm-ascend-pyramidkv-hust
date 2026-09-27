@@ -1,39 +1,47 @@
-# Required host contract
+# Required shared-host method contract
 
-The recovered provider cannot safely activate through a generic import hook.
-KV compression changes scheduler-visible physical ownership, so an active host
-must supply an explicit transactional contract.
+The former direct Core and Ascend host Drafts were withdrawn. PyramidKV must
+not patch those source trees or reactivate their private contract. The proposed
+shared lifecycle owner is `vllm-ascend-kvcompress-hust`, with activation and
+rollback controlled through Extension Manager.
 
-## Core responsibilities
+## Existing shared boundary
 
-The provider-neutral Core boundary must cover:
+The shared package documents the external entry-point group
+`vllm_ascend_kvcompress.methods`. Its method API already provides:
 
-1. versioned configuration, compatibility, runtime-limit, and compression-plan
-   values;
-2. worker capability validation before formal KV allocation;
-3. private destination admission for prefix-cached compression;
-4. scheduler transport of plans, transaction identity, commit acknowledgement,
-   cancellation, and restart handling;
-5. atomic block-table replacement, ownership transfer, reference release, and
-   physical-length accounting;
-6. prefix-cache admission that preserves the provider-required recompute
-   suffix; and
-7. output serialization compatible with synchronous and asynchronous
-   scheduling.
+1. model shape and method-owned configuration;
+2. scheduler-visible runtime limits;
+3. allocated full-attention K/V layer bindings;
+4. source and private destination block tables; and
+5. synchronous compression results and physical-length accounting.
 
-## Ascend responsibilities
+## Missing PyramidKV input
 
-The provider-neutral Ascend boundary must cover:
+PyramidKV scores historical keys with the final prefill's trailing query
+window. The current method API supplies K/V caches but does not expose those
+query tensors. An external method therefore cannot reproduce PyramidKV token
+selection without independently patching private model-runner or attention
+classes, which this repository will not do.
 
-1. provider discovery without hard-coding PyramidKV in platform code;
-2. pre-allocation worker validation and post-initialization activation;
-3. a cache-write view that can select and materialize compact K/V only after a
-   successful complete model forward;
-4. request-local commit acknowledgement and layer-specific physical decode
-   metadata; and
-5. graph-safe metadata for validated decode-only capture modes.
+The required optional query-observation extension must:
 
-The extension does not monkey-patch private model-runner or attention classes.
-The paired host branches expose these responsibilities directly, so the active
-manifest registers only the dedicated Ascend provider entry point and does not
-claim the broad `vllm.general_plugins` namespace.
+1. remain a no-op for methods that do not request it;
+2. declare the trailing query-window length before allocation;
+3. observe only full-attention layers after a successful final-prefill forward;
+4. bind observations to request and compression-transaction identity;
+5. use method-owned, address-stable buffers for validated graph replay; and
+6. clear state on cancellation, abort, restart, and completed commit.
+
+The shared provider must contain no PyramidKV-specific policy. The algorithm
+will register as an external method only after this interface is accepted.
+Design coordination is tracked in
+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3.
+
+## Target acceptance boundary
+
+Interface acceptance is not runtime support. CANN 9.1 and
+Qwen3.5-35B-A3B hybrid serving must continue to fail closed until an exact
+package trio validates TP=2 with APC, MTP=2, async scheduling,
+`FULL_AND_PIECEWISE`, and `mamba_cache_mode=align` enabled. Only
+full-attention K/V may be compacted; recurrent state stays native.

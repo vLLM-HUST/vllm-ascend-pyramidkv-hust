@@ -28,9 +28,6 @@ test = [
 [project.entry-points."vllm_hust.extension_bundles"]
 "org.vllm-hust.ascend-pyramidkv" = "vllm_ascend_pyramidkv"
 
-[project.entry-points."vllm_ascend.kv_cache_compression_providers"]
-pyramidkv_ascend = "vllm_ascend_pyramidkv.registry:get_kv_cache_compression_provider"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/vllm_ascend_pyramidkv"]
 

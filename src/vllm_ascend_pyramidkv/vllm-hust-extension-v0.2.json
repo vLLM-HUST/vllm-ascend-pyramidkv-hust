@@ -25,7 +25,7 @@
       "type": "python_module",
       "module": "vllm_ascend_pyramidkv",
       "object": "PyramidKVContractProposal",
-      "status": "active"
+      "status": "import_only"
     }
   ],
   "requires_services": [],
@@ -40,12 +40,7 @@
     }
   ],
   "activation": {
-    "entry_points": [
-      {
-        "group": "vllm_ascend.kv_cache_compression_providers",
-        "name": "pyramidkv_ascend"
-      }
-    ],
+    "entry_points": [],
     "environment": {},
     "additional_config": {}
   }

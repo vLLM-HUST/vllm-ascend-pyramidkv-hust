@@ -3,18 +3,34 @@
 Owner-maintained extraction of the PyramidKV provider work preserved in the
 archived vLLM-HUST and vLLM-Ascend-HUST repositories.
 
-**Status: active development alpha; exact-head NPU validation is pending.**
+**Status: capability preview, not a runnable alpha.**
 
-The package is discoverable as `org.vllm-hust.ascend-pyramidkv` and registers
-`pyramidkv_ascend` in the provider namespace owned by vLLM-Ascend-HUST. It is
-loaded lazily only when vLLM-HUST configuration selects that provider.
-Importing the top-level package never patches or activates vLLM.
+The package is discoverable as `org.vllm-hust.ascend-pyramidkv`, but its
+Manifest 0.2 carrier is deliberately marked `import_only`. Extension Manager
+inspection works and enablement fails closed. Importing the top-level package
+never patches or activates vLLM.
 
-The active alpha retains the schema-v1 configuration, fail-closed capability
-matrix, request state, and CPU-testable selection semantics while using the
-provider-neutral transactional interfaces in the paired Core and Ascend hosts.
+The package retains the schema-v1 configuration, fail-closed capability
+matrix, request state, CPU-testable selection semantics, and the current
+Qwen2.5 grouped-GQA device oracle without claiming serving compatibility.
 
-## Install the active alpha
+## Host ownership and current interface gap
+
+The former host-side Drafts in `vllm-hust` and `vllm-ascend-hust` were
+withdrawn. The proposed shared lifecycle owner is
+[`vllm-ascend-kvcompress-hust`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust),
+whose documented external method namespace is
+`vllm_ascend_kvcompress.methods`. Its current method contract exposes paged K/V
+and compression transactions but no final-prefill query-window observation.
+PyramidKV requires that query window for token selection, so registering a
+method now would be incomplete and unsafe.
+
+The missing method-neutral interface is tracked in
+[`vllm-ascend-kvcompress-hust#3`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3).
+Until its maintainers accept an interface, this repository publishes no
+runtime provider or method entry point.
+
+## Inspect the capability preview
 
 ```bash
 python -m pip install \
@@ -23,14 +39,9 @@ python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```
 
-Install it into the same environment as the exact paired vLLM-HUST and
-vLLM-Ascend-HUST heads. Enable compression explicitly at launch:
-
-```bash
-vllm serve MODEL \
-  --kv-cache-compression-config \
-  '{"provider":"pyramidkv_ascend","provider_config":{"max_capacity_prompt":512,"min_compression_prompt_tokens":4096,"window_size":8,"kernel_size":7,"pooling":"maxpool","beta":20,"kv_cache_granularity":"kv_head","gqa_score_aggregation":"mean","merge":null}}'
-```
+Inspection must report that the implementation is `import_only`. Do not enable
+or launch it through Extension Manager; no current host version is advertised
+as serving-compatible.
 
 For standalone provider tests, install the test extra in an environment with a
 host-compatible PyTorch build:
@@ -54,14 +65,22 @@ with `--no-deps` when appropriate.
 ## Current boundary
 
 - No `vllm.general_plugins` entry point is registered.
+- No `vllm_ascend.kv_cache_compression_providers` or
+  `vllm_ascend_kvcompress.methods` entry point is registered.
 - No import-time monkey patching is performed.
-- Runtime activation requires the paired schema-v1 Core and Ascend host branches.
+- Runtime activation is blocked while the shared host lacks query-window
+  observation.
 - Historical NPU, LongBench, and performance results are supporting evidence,
   not measurements of this repository's current head.
 - The current provider head has a real-device Qwen 40-to-8 GQA selection
-  oracle; this does not replace paired-host end-to-end validation.
-- Release promotion still requires exact-head real-device correctness, rollback,
-  quality, capacity, and performance evidence.
+  oracle on Ascend 910B2/CANN 9.0; this does not replace serving validation and
+  will not be rerun as a substitute.
+- The requested target is CANN 9.1, Qwen3.5-35B-A3B BF16, TP=2, APC, MTP=2,
+  async scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. None of
+  that combination is currently claimed as supported.
+- Release promotion requires an accepted interface followed by exact-head
+  installation, activation, serving correctness, rollback, quality, capacity,
+  latency, throughput, and HBM evidence.
 
 See:
 

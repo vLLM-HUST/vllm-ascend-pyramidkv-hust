@@ -1,6 +1,7 @@
 # Install, inspect, and rollback
 
-This document applies to the active alpha and its paired schema-v1 hosts.
+This document applies to the installable capability preview. It is not a
+serving guide while the shared-host method interface remains unresolved.
 
 ## Clean installation
 
@@ -13,10 +14,9 @@ python -m pip install /path/to/vllm-ascend-pyramidkv-hust
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```
 
-Inspection must report an `active` implementation and the
-`pyramidkv_ascend` provider entry point. Activation remains explicit: add
-`--kv-cache-compression-config` to a new vLLM process. Omitting that option
-preserves the default host path and does not load the provider implementation.
+Inspection must report an `import_only` implementation and an activation
+blocker. The package deliberately registers no runtime provider or method
+entry point. Extension Manager enablement must fail closed.
 
 ## Offline development tests
 
@@ -38,8 +38,8 @@ ASCEND_RT_VISIBLE_DEVICES=0 PYRAMIDKV_RUN_NPU_TESTS=1 \
 
 ## Disable and rollback
 
-Stop the serving process, remove `--kv-cache-compression-config`, uninstall the
-provider distribution, and start a new process:
+Because this preview cannot activate, rollback consists only of uninstalling
+the distribution and confirming that its Python package is absent:
 
 ```bash
 python -m pip uninstall -y vllm-ascend-pyramidkv-hust

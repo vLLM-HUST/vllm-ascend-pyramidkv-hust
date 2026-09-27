@@ -4,8 +4,8 @@
 
 These data classes mirror the provider-neutral contract merged by legacy Core
 PR #232. They keep the extracted provider independently importable and
-testable when vLLM is absent; an active installation resolves the canonical
-schema from the host through :mod:`vllm_ascend_pyramidkv.contracts`.
+testable when vLLM is absent. They do not make the descriptor activatable or
+replace the future shared-host method contract.
 """
 
 from __future__ import annotations
