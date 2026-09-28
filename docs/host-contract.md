@@ -34,19 +34,27 @@ PyramidKV accepts that contract. Earlier chunk staging is necessary to retain a
 window that crosses chunk boundaries; uncommitted observations remain invisible
 to compression.
 
-## Remaining per-layer physical-state gap
+## Accepted per-layer physical state
 
-PyramidKV assigns different retained lengths to different layers. Although the
-method result type exposes `per_layer_physical_num_tokens`, the current shared
-adapter stores one request-global physical anchor and uses it for every decode
-slot and full-attention sequence length. An external method cannot safely
-materialize PyramidKV until the adapter validates and commits the per-layer map
-and uses the matching value while building each layer's metadata.
+PyramidKV assigns different retained lengths to different layers. Shared-host
+PR #10 now validates the complete `per_layer_physical_num_tokens` map, commits
+it at the output-acknowledged transaction boundary, and applies each layer's
+anchor to eager decode slots and standard Ascend attention metadata. Uniform
+methods keep their existing path; GDN remains in semantic space. Graph replay,
+MTP, and other metadata backends remain fail closed.
 
-The shared provider must contain no PyramidKV-specific policy. Uniform methods
-must retain their existing fast path, hybrid recurrent state must remain in
-semantic space, and graph replay must fail closed if it bypasses per-layer
-metadata. Design coordination remains in
+## Remaining prefix-cache admission gap
+
+The public runtime spec declares `required_recompute_tokens`, but the shared
+scheduler does not yet apply it to prefix-cache admission. PyramidKV needs the
+last `window_size` query rows; an APC hit that leaves only one uncached token
+cannot satisfy the observation contract. The external method therefore rejects
+APC until the scheduler caps cache hits at
+`prompt_len - required_recompute_tokens`, with a zero lower bound for short
+prompts.
+
+The shared provider must contain no PyramidKV-specific policy. Design
+coordination remains in
 https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3.
 
 ## Target acceptance boundary

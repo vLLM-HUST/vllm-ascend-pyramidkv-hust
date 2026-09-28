@@ -1,8 +1,8 @@
 # Install, inspect, and rollback
 
 This document applies to the installable capability preview. It is not a
-serving guide while per-layer physical-state consumption remains unresolved in
-the shared host.
+serving guide while prefix-cache recompute admission and exact-stack validation
+remain unresolved in the shared host.
 
 ## Clean installation
 

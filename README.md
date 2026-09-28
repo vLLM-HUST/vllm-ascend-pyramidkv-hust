@@ -24,15 +24,23 @@ whose documented external method namespace is
 [PR #9](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/9)
 provides the accepted final-prefill query-window observation contract.
 
-One method-neutral gap remains: `CompressionResult` can describe per-layer
-physical lengths, but the shared adapter does not yet apply those lengths to
-per-layer decode slots and attention metadata. PyramidKV requires different
-retained lengths at different layers, so replacing them with one uniform
-length would change the algorithm or expose invalid cache slots. Follow-up is
-tracked in
+Merged [PR #10](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/10)
+adds eager consumption of method-returned per-layer physical lengths. One
+method-neutral gap remains: the scheduler does not yet use
+`required_recompute_tokens` to limit prefix-cache hits, so APC can leave fewer
+query rows than PyramidKV's trailing window. Follow-up is tracked in
 [`vllm-ascend-kvcompress-hust#3`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3).
-Until that public consumption path is merged, this repository publishes no
-runtime provider or method entry point.
+Prefix-cache recompute admission and exact-stack serving validation remain
+open. This repository therefore still publishes no runtime provider or method
+entry point.
+
+The unregistered `PyramidKVMethod` development implementation targets the
+public contracts at shared-host commit
+`6e2b01bd3ea88f55ad4000681f7a861d93ce34d2`. Its CPU tests cover chunk-spanning
+query capture, transaction identity, paged materialization, and unequal
+per-layer results. It deliberately rejects APC until the shared scheduler
+consumes `required_recompute_tokens`, and it rejects MTP and graph replay under
+the current eager-only per-layer contract.
 
 ## Inspect the capability preview
 
