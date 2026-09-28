@@ -46,8 +46,9 @@ ordinary path; admission began above that boundary.
 | Current-head Qwen grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9 |
 | Extension descriptor activation | Blocked (`import_only`) |
 | Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
-| Shared lifecycle candidate | `vllm-ascend-kvcompress-hust` |
-| External method interface | Blocked on query-window observation ([issue #3](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3)) |
+| Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
+| Query observation interface | Accepted and merged in shared-host PR #9 |
+| External method interface | Blocked on per-layer physical-state consumption ([issue #3](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3)) |
 | CANN 9.1 + Qwen3.5 hybrid target | Unsupported; fail closed pending interface and serving validation |
 | TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Unsupported as a combined configuration |
 | Exact-head NPU correctness | Pending |

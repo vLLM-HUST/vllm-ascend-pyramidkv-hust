@@ -1,7 +1,8 @@
 # Install, inspect, and rollback
 
 This document applies to the installable capability preview. It is not a
-serving guide while the shared-host method interface remains unresolved.
+serving guide while per-layer physical-state consumption remains unresolved in
+the shared host.
 
 ## Clean installation
 

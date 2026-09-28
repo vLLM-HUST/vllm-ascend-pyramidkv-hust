@@ -1,7 +1,7 @@
 # Required shared-host method contract
 
 The former direct Core and Ascend host Drafts were withdrawn. PyramidKV must
-not patch those source trees or reactivate their private contract. The proposed
+not patch those source trees or reactivate their private contract. The confirmed
 shared lifecycle owner is `vllm-ascend-kvcompress-hust`, with activation and
 rollback controlled through Extension Manager.
 
@@ -14,28 +14,39 @@ The shared package documents the external entry-point group
 2. scheduler-visible runtime limits;
 3. allocated full-attention K/V layer bindings;
 4. source and private destination block tables; and
-5. synchronous compression results and physical-length accounting.
+5. synchronous compression results, including an optional per-layer length
+   result.
 
-## Missing PyramidKV input
+## Accepted query observation
 
 PyramidKV scores historical keys with the final prefill's trailing query
-window. The current method API supplies K/V caches but does not expose those
-query tensors. An external method therefore cannot reproduce PyramidKV token
-selection without independently patching private model-runner or attention
-classes, which this repository will not do.
+window. Shared-host PR #9 added an optional observation contract that:
 
-The required optional query-observation extension must:
+1. remains a no-op for methods that do not request it;
+2. declares the trailing query-window length before allocation;
+3. stages only bound full-attention layers across prefill chunks;
+4. binds observations to request and compression-transaction identity;
+5. publishes them only after the complete final-prefill forward and sampling
+   succeed; and
+6. clears state on cancellation, abort, restart, and completed commit.
 
-1. remain a no-op for methods that do not request it;
-2. declare the trailing query-window length before allocation;
-3. observe only full-attention layers after a successful final-prefill forward;
-4. bind observations to request and compression-transaction identity;
-5. use method-owned, address-stable buffers for validated graph replay; and
-6. clear state on cancellation, abort, restart, and completed commit.
+PyramidKV accepts that contract. Earlier chunk staging is necessary to retain a
+window that crosses chunk boundaries; uncommitted observations remain invisible
+to compression.
 
-The shared provider must contain no PyramidKV-specific policy. The algorithm
-will register as an external method only after this interface is accepted.
-Design coordination is tracked in
+## Remaining per-layer physical-state gap
+
+PyramidKV assigns different retained lengths to different layers. Although the
+method result type exposes `per_layer_physical_num_tokens`, the current shared
+adapter stores one request-global physical anchor and uses it for every decode
+slot and full-attention sequence length. An external method cannot safely
+materialize PyramidKV until the adapter validates and commits the per-layer map
+and uses the matching value while building each layer's metadata.
+
+The shared provider must contain no PyramidKV-specific policy. Uniform methods
+must retain their existing fast path, hybrid recurrent state must remain in
+semantic space, and graph replay must fail closed if it bypasses per-layer
+metadata. Design coordination remains in
 https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3.
 
 ## Target acceptance boundary

@@ -17,17 +17,21 @@ Qwen2.5 grouped-GQA device oracle without claiming serving compatibility.
 ## Host ownership and current interface gap
 
 The former host-side Drafts in `vllm-hust` and `vllm-ascend-hust` were
-withdrawn. The proposed shared lifecycle owner is
+withdrawn. The confirmed shared lifecycle owner is
 [`vllm-ascend-kvcompress-hust`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust),
 whose documented external method namespace is
-`vllm_ascend_kvcompress.methods`. Its current method contract exposes paged K/V
-and compression transactions but no final-prefill query-window observation.
-PyramidKV requires that query window for token selection, so registering a
-method now would be incomplete and unsafe.
+`vllm_ascend_kvcompress.methods`. Its merged
+[PR #9](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/9)
+provides the accepted final-prefill query-window observation contract.
 
-The missing method-neutral interface is tracked in
+One method-neutral gap remains: `CompressionResult` can describe per-layer
+physical lengths, but the shared adapter does not yet apply those lengths to
+per-layer decode slots and attention metadata. PyramidKV requires different
+retained lengths at different layers, so replacing them with one uniform
+length would change the algorithm or expose invalid cache slots. Follow-up is
+tracked in
 [`vllm-ascend-kvcompress-hust#3`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3).
-Until its maintainers accept an interface, this repository publishes no
+Until that public consumption path is merged, this repository publishes no
 runtime provider or method entry point.
 
 ## Inspect the capability preview
@@ -68,8 +72,8 @@ with `--no-deps` when appropriate.
 - No `vllm_ascend.kv_cache_compression_providers` or
   `vllm_ascend_kvcompress.methods` entry point is registered.
 - No import-time monkey patching is performed.
-- Runtime activation is blocked while the shared host lacks query-window
-  observation.
+- Runtime activation is blocked while the shared host lacks per-layer physical
+  state consumption.
 - Historical NPU, LongBench, and performance results are supporting evidence,
   not measurements of this repository's current head.
 - The current provider head has a real-device Qwen 40-to-8 GQA selection
@@ -78,9 +82,9 @@ with `--no-deps` when appropriate.
 - The requested target is CANN 9.1, Qwen3.5-35B-A3B BF16, TP=2, APC, MTP=2,
   async scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. None of
   that combination is currently claimed as supported.
-- Release promotion requires an accepted interface followed by exact-head
-  installation, activation, serving correctness, rollback, quality, capacity,
-  latency, throughput, and HBM evidence.
+- Release promotion requires the remaining shared interface followed by
+  exact-head installation, activation, serving correctness, rollback, quality,
+  capacity, latency, throughput, and HBM evidence.
 
 See:
 
