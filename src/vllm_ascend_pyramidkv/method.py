@@ -36,7 +36,9 @@ from vllm_ascend_pyramidkv.provider import (
 METHOD_NAME = "pyramidkv"
 ASCEND_CACHE_BLOCK_SIZE = 128
 QWEN35_ATTENTION_BLOCK_SIZE = 2048
-QWEN35_MODEL_TYPES = frozenset({"qwen3_5_text", "qwen3_5_moe_text"})
+TARGET_MODEL_ID = "Qwen/Qwen3.5-35B-A3B"
+TARGET_MODEL_DISPLAY_NAME = "Qwen3.5-35B"
+QWEN35_MODEL_TYPES = frozenset({"qwen3_5_moe_text"})
 QWEN35_FULL_ATTENTION_LAYERS = tuple(range(3, 40, 4))
 
 
@@ -134,7 +136,7 @@ class PyramidKVMethod(KVCompressionMethod):
         reasons: list[str] = []
         shape = self.model_shape
         if shape.model_type not in QWEN35_MODEL_TYPES:
-            reasons.append("only Qwen3.5 text/MoE text is staged for serving")
+            reasons.append(f"only {TARGET_MODEL_ID} ({TARGET_MODEL_DISPLAY_NAME}) is staged for serving")
         if (
             shape.num_layers,
             shape.num_attention_heads,
@@ -143,7 +145,7 @@ class PyramidKVMethod(KVCompressionMethod):
             shape.effective_rotary_dim,
             shape.full_attention_layer_indices,
         ) != (40, 16, 2, 256, 64, QWEN35_FULL_ATTENTION_LAYERS):
-            reasons.append("Qwen3.5-35B-A3B attention geometry is required")
+            reasons.append(f"{TARGET_MODEL_ID} attention geometry is required")
 
         model = self.vllm_config.model_config
         if str(getattr(model, "dtype", "")) not in {"bfloat16", "torch.bfloat16"}:

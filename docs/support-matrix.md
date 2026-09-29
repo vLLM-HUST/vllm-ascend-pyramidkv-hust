@@ -4,6 +4,21 @@ This matrix separates the recovered historical profile from the current
 capability preview. CPU coverage and a provider-only NPU oracle are available;
 there is no current serving support claim.
 
+## Release-validation target
+
+| Dimension | Required value |
+| --- | --- |
+| Display name | Qwen3.5-35B |
+| Exact model ID | `Qwen/Qwen3.5-35B-A3B` |
+| Model family | Qwen3.5 hybrid MoE (`qwen3_5_moe_text`) |
+| Dtype | BF16 |
+| Runtime | CANN 9.1, Ascend, TP=2 |
+| Required features | APC, MTP=2, async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, `mamba_cache_mode=align` |
+
+The Qwen2.5-14B result below is retained only as historical/provider-only
+evidence. It must not be reported as the release-validation model or used to
+claim that the current plugin is runnable.
+
 ## Historical baseline
 
 | Dimension | Legacy validated values |
@@ -43,7 +58,7 @@ ordinary path; admission began above that boundary.
 | --- | --- |
 | Package installation and metadata inspection | Available |
 | Offline CPU algorithm and compatibility tests | Available |
-| Current-head Qwen grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9 |
+| Historical Qwen2.5-14B grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9; not release evidence |
 | Extension descriptor activation | Blocked (`import_only`) |
 | Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
 | Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
@@ -51,7 +66,7 @@ ordinary path; admission began above that boundary.
 | Per-layer physical-state interface | Accepted and merged in shared-host PR #10; eager standard metadata only |
 | External method implementation | CPU prototype available; runtime entry point intentionally unregistered |
 | Prefix-cache recompute admission | Blocked: shared scheduler does not yet consume `required_recompute_tokens` ([issue #3](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3)) |
-| CANN 9.1 + Qwen3.5 hybrid target | Unsupported; fail closed pending interface and serving validation |
+| CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Unsupported; fail closed pending interface and serving validation |
 | TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Unsupported as a combined configuration |
 | Exact-head NPU correctness | Pending |
 | Exact-head quality/capacity/performance | Pending |

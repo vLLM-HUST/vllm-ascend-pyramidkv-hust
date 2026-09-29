@@ -59,8 +59,8 @@ https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3.
 
 ## Target acceptance boundary
 
-Interface acceptance is not runtime support. CANN 9.1 and
-Qwen3.5-35B-A3B hybrid serving must continue to fail closed until an exact
-package trio validates TP=2 with APC, MTP=2, async scheduling,
+Interface acceptance is not runtime support. CANN 9.1 and the official
+`Qwen/Qwen3.5-35B-A3B` model (display name: Qwen3.5-35B) must continue to fail
+closed until an exact package trio validates TP=2 with APC, MTP=2, async scheduling,
 `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align` enabled. Only
 full-attention K/V may be compacted; recurrent state stays native.

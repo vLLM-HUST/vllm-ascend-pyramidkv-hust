@@ -13,6 +13,9 @@ from vllm_ascend_kvcompress.methods.base import (
 from vllm_ascend_kvcompress.transaction import CompressionPlan
 
 from vllm_ascend_pyramidkv.method import (
+    QWEN35_MODEL_TYPES,
+    TARGET_MODEL_DISPLAY_NAME,
+    TARGET_MODEL_ID,
     PyramidKVMethod,
     create_pyramidkv_method,
 )
@@ -92,6 +95,12 @@ def test_factory_exposes_block_aligned_runtime_contract() -> None:
     assert method.runtime_spec.compression_threshold_tokens == 4097
     assert method.runtime_spec.required_recompute_tokens == 4
     assert method.runtime_spec.max_physical_num_tokens == 2048
+
+
+def test_validation_target_is_the_official_qwen35_35b_model() -> None:
+    assert TARGET_MODEL_ID == "Qwen/Qwen3.5-35B-A3B"
+    assert TARGET_MODEL_DISPLAY_NAME == "Qwen3.5-35B"
+    assert {"qwen3_5_moe_text"} == QWEN35_MODEL_TYPES
 
 
 def test_query_capture_spans_chunks_and_materializes_per_layer_state() -> None:

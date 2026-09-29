@@ -3,16 +3,18 @@
 Owner-maintained extraction of the PyramidKV provider work preserved in the
 archived vLLM-HUST and vLLM-Ascend-HUST repositories.
 
-**Status: capability preview, not a runnable alpha.**
+**Graduation target: a public, runnable Extension Workshop plugin. Current
+status: capability preview, not a runnable alpha.**
 
 The package is discoverable as `org.vllm-hust.ascend-pyramidkv`, but its
 Manifest 0.2 carrier is deliberately marked `import_only`. Extension Manager
 inspection works and enablement fails closed. Importing the top-level package
 never patches or activates vLLM.
 
-The package retains the schema-v1 configuration, fail-closed capability
-matrix, request state, CPU-testable selection semantics, and the current
-Qwen2.5 grouped-GQA device oracle without claiming serving compatibility.
+The release-validation model is **Qwen3.5-35B**, using the official model ID
+`Qwen/Qwen3.5-35B-A3B`. The package also retains the earlier Qwen2.5-14B
+grouped-GQA device oracle as historical provider-only evidence; that result is
+not a substitute for Qwen3.5 serving validation.
 
 ## Host ownership and current interface gap
 
@@ -80,16 +82,18 @@ with `--no-deps` when appropriate.
 - No `vllm_ascend.kv_cache_compression_providers` or
   `vllm_ascend_kvcompress.methods` entry point is registered.
 - No import-time monkey patching is performed.
-- Runtime activation is blocked while the shared host lacks per-layer physical
-  state consumption.
+- Runtime activation is blocked while the shared host lacks
+  `required_recompute_tokens` prefix-cache admission and the target runtime
+  paths remain unvalidated.
 - Historical NPU, LongBench, and performance results are supporting evidence,
   not measurements of this repository's current head.
 - The current provider head has a real-device Qwen 40-to-8 GQA selection
   oracle on Ascend 910B2/CANN 9.0; this does not replace serving validation and
   will not be rerun as a substitute.
-- The requested target is CANN 9.1, Qwen3.5-35B-A3B BF16, TP=2, APC, MTP=2,
-  async scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. None of
-  that combination is currently claimed as supported.
+- The requested target is CANN 9.1, official model
+  `Qwen/Qwen3.5-35B-A3B` (display name: Qwen3.5-35B), BF16, TP=2, APC, MTP=2,
+  async scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. None
+  of that combined configuration is currently claimed as supported.
 - Release promotion requires the remaining shared interface followed by
   exact-head installation, activation, serving correctness, rollback, quality,
   capacity, latency, throughput, and HBM evidence.
