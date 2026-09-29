@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 maintainers = [{name = "Irisuko"}]
-dependencies = []
+dependencies = ["vllm-ascend-kvcompress-hust>=0.9,<0.10"]
 
 [project.urls]
 Repository = "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust"

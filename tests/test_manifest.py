@@ -6,6 +6,14 @@ from vllm_hust_ext.manifest import activation_blocker, load_manifest
 import vllm_ascend_pyramidkv
 
 
+def test_distribution_requires_versioned_shared_host() -> None:
+    pyproject = (Path(__file__).parents[1] / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'dependencies = ["vllm-ascend-kvcompress-hust>=0.9,<0.10"]' in pyproject
+
+
 def test_descriptor_publishes_active_external_method() -> None:
     manifest = load_manifest(Path(vllm_ascend_pyramidkv.__file__).with_name("vllm-hust-extension-v0.2.json"))
 

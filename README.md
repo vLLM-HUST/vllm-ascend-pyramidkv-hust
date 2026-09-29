@@ -39,7 +39,8 @@ cover synthetic FULL capture batches, graph-replay query observation, and
 empty async execution steps.
 
 The registered `PyramidKVMethod` implementation targets the public contracts
-from merged shared-host PR #13. Its
+from merged shared-host PR #13 and requires shared-host method API v1,
+published by the 0.9 release line. Its
 CPU tests cover chunk-spanning query capture, transaction identity, paged
 materialization, unequal per-layer results, auxiliary MTP cache materialization,
 and graph-stable metadata. The combined APC, exact Qwen3.5 MTP2, async,
@@ -52,6 +53,7 @@ compressed the full-attention KV state to 2048 tokens and completed decode.
 ```bash
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
+python -m pip install --no-deps "vllm-ascend-kvcompress-hust>=0.9,<0.10"
 python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```

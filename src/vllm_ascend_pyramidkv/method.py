@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import torch
+from vllm_ascend_kvcompress.methods import METHOD_API_VERSION
 from vllm_ascend_kvcompress.methods.base import (
     CompressionRequest,
     CompressionResult,
@@ -35,12 +36,19 @@ from vllm_ascend_pyramidkv.provider import (
 )
 
 METHOD_NAME = "pyramidkv"
+REQUIRED_METHOD_API_VERSION = 1
 ASCEND_CACHE_BLOCK_SIZE = 128
 QWEN35_ATTENTION_BLOCK_SIZE = 2048
 TARGET_MODEL_ID = "Qwen/Qwen3.5-35B-A3B"
 TARGET_MODEL_DISPLAY_NAME = "Qwen3.5-35B"
 QWEN35_MODEL_TYPES = frozenset({"qwen3_5_moe_text"})
 QWEN35_FULL_ATTENTION_LAYERS = tuple(range(3, 40, 4))
+
+if METHOD_API_VERSION != REQUIRED_METHOD_API_VERSION:
+    raise RuntimeError(
+        "PyramidKV requires vllm-ascend-kvcompress-hust method API v1; "
+        f"found v{METHOD_API_VERSION}"
+    )
 
 
 @dataclass(frozen=True)

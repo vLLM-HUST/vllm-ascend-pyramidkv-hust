@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+from vllm_ascend_kvcompress.methods import METHOD_API_VERSION
 from vllm_ascend_kvcompress.methods.base import (
     CompressionRequest,
     KVCompressionMethod,
@@ -14,11 +15,17 @@ from vllm_ascend_kvcompress.transaction import CompressionPlan
 
 from vllm_ascend_pyramidkv.method import (
     QWEN35_MODEL_TYPES,
+    REQUIRED_METHOD_API_VERSION,
     TARGET_MODEL_DISPLAY_NAME,
     TARGET_MODEL_ID,
     PyramidKVMethod,
     create_pyramidkv_method,
 )
+
+
+def test_shared_host_method_api_is_exact() -> None:
+    assert REQUIRED_METHOD_API_VERSION == 1
+    assert METHOD_API_VERSION == REQUIRED_METHOD_API_VERSION
 
 
 def _options() -> dict[str, object]:
