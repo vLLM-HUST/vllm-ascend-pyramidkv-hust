@@ -99,8 +99,9 @@ with `--no-deps` when appropriate.
   `Qwen/Qwen3.5-35B-A3B` (display name: Qwen3.5-35B), BF16, TP=2, APC, MTP=2,
   async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, and
   `mamba_cache_mode=align`.
-- Release promotion still requires shared-host review/merge, manager rollback
-  evidence, and quality, capacity, latency, throughput, and HBM evidence.
+- Release promotion still requires current-head quality, capacity, latency,
+  throughput, and HBM evidence. Shared-host merge and Manager rollback gates
+  are complete.
 
 See:
 
