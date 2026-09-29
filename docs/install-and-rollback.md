@@ -11,8 +11,8 @@ python -m venv .venv-pyramidkv
 source .venv-pyramidkv/bin/activate
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
-python -m pip install --no-deps /path/to/vllm-ascend-kvcompress-hust
-python -m pip install /path/to/vllm-ascend-pyramidkv-hust
+python -m pip install --no-deps "vllm-ascend-kvcompress-hust>=0.9,<0.10"
+python -m pip install --no-deps /path/to/vllm-ascend-pyramidkv-hust
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
 vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
@@ -21,7 +21,9 @@ vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
 Inspection must report the active
 `vllm_ascend_kvcompress.methods:pyramidkv` implementation without an
 activation blocker. Host compatibility checks still reject every unqualified
-runtime profile.
+runtime profile. The PyramidKV package also checks shared-host method API v1
+when its method entry point loads, so an older adapter cannot fail later in a
+serving request.
 
 ## Offline development tests
 
