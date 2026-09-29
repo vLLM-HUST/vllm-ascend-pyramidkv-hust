@@ -27,7 +27,7 @@ jobs:
       - run: ruff format --check .
       - run: pytest -q
       - run: python -m build
-      - name: Verify descriptor remains fail closed
+      - name: Verify active descriptor contract
         run: |
           vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
           python - <<'PY'
@@ -41,7 +41,13 @@ jobs:
                   "vllm-hust-extension-v0.2.json"
               )
           )
-          assert activation_blocker(manifest) is not None
+          assert activation_blocker(manifest) is None
           assert manifest.experimental
-          assert not manifest.activation.entry_points
+          assert tuple(
+              (item.group, item.name)
+              for item in manifest.activation.entry_points
+          ) == (("vllm_ascend_kvcompress.methods", "pyramidkv"),)
+          assert manifest.components[0].implementation_ref == (
+              "vllm_ascend_pyramidkv.method:create_pyramidkv_method"
+          )
           PY

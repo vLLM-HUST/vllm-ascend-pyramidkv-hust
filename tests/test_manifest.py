@@ -19,6 +19,7 @@ def test_descriptor_publishes_active_external_method() -> None:
     assert tuple((item.group, item.name) for item in manifest.activation.entry_points) == (
         ("vllm_ascend_kvcompress.methods", "pyramidkv"),
     )
+    assert manifest.components[0].implementation_ref == ("vllm_ascend_pyramidkv.method:create_pyramidkv_method")
     registrations = entry_points(group="vllm_hust.extension_bundles")
     assert any(item.name == manifest.bundle_id for item in registrations)
     provider_registrations = entry_points(group="vllm_ascend.kv_cache_compression_providers")
