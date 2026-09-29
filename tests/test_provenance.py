@@ -22,4 +22,5 @@ def test_docs_separate_functional_qualification_from_release_promotion() -> None
 
     assert "exact-stack functional" in readme
     assert "required_recompute_tokens" in readme
-    assert "Alpha release | Pending shared-host merge" in matrix
+    assert "MTP2/FULL_AND_PIECEWISE stage merged in shared-host PR #13" in matrix
+    assert "Alpha release | Pending quality, capacity, and performance evidence" in matrix

@@ -31,7 +31,7 @@ adds eager consumption of method-returned per-layer physical lengths. Merged
 [PR #12](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/12)
 now consumes `required_recompute_tokens` during prefix-cache admission and
 fails closed when Query/APC contracts or host lookup seams are inconsistent.
-Draft [PR #13](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/13)
+Merged [PR #13](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/13)
 adds predeclared, address-stable per-layer
 metadata for `FULL_AND_PIECEWISE`, layer-scoped Query observation, and an MTP2
 speculative-common metadata view with draft rollback safety. Follow-up fixes
@@ -39,7 +39,7 @@ cover synthetic FULL capture batches, graph-replay query observation, and
 empty async execution steps.
 
 The registered `PyramidKVMethod` implementation targets the public contracts
-on shared-host PR #13. Its
+from merged shared-host PR #13. Its
 CPU tests cover chunk-spanning query capture, transaction identity, paged
 materialization, unequal per-layer results, auxiliary MTP cache materialization,
 and graph-stable metadata. The combined APC, exact Qwen3.5 MTP2, async,

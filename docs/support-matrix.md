@@ -63,11 +63,11 @@ ordinary path; admission began above that boundary.
 | Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
 | Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
 | Query observation interface | Accepted and merged in shared-host PR #9 |
-| Per-layer physical-state interface | Eager stage merged in PR #10; MTP2/FULL_AND_PIECEWISE follow-up submitted as shared-host Draft PR #13 |
+| Per-layer physical-state interface | Eager stage merged in PR #10; MTP2/FULL_AND_PIECEWISE stage merged in shared-host PR #13 |
 | External method implementation | Registered; covers target layers plus auxiliary MTP cache |
 | Prefix-cache recompute admission | Accepted and merged in shared-host PR #12; Query/APC mismatches fail closed |
 | CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Functional serving smoke passed on Ascend 910B2 |
 | TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Functional 5007-token request passed; 5007-to-2048 compression committed on both TP workers |
 | Exact-head NPU correctness | Functional path passed; task-quality evaluation pending |
 | Exact-head quality/capacity/performance | Pending |
-| Alpha release | Pending shared-host merge, rollback, quality, capacity, and performance evidence |
+| Alpha release | Pending quality, capacity, and performance evidence; functional rollback passed |

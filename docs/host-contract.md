@@ -42,7 +42,7 @@ at the output-acknowledged transaction boundary, and applies each layer's
 anchor to eager decode slots and standard Ascend attention metadata. Uniform
 methods keep their existing path; GDN remains in semantic space.
 
-Shared-host Draft PR #13 lets a method declare unequal per-layer state
+Merged shared-host PR #13 lets a method declare unequal per-layer state
 before graph capture, allocates stable layer-specific slot buffers, and uses
 the host's layer-keyed FIA task update seam during `FULL_AND_PIECEWISE` replay.
 It also permits a query method to select target-model layers while retaining an
@@ -51,9 +51,8 @@ metadata receives that cache's physical lengths and slots, so rejected draft
 positions are overwritten rather than advancing per-layer state. Unsupported
 graph/speculative/parallel paths remain fail closed.
 
-The PyramidKV package CI pins this candidate exactly at
-`c97dce2fa06a6963269d6d194faeffb7210c3380`; review or merge of that shared
-contract remains a prerequisite for activation.
+The PyramidKV package CI pins the merged shared-host contract exactly at
+`d5507c2bcedb642ebf66c599cee2bd5b9731a84c`.
 
 ## Accepted prefix-cache admission
 
@@ -71,8 +70,9 @@ https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3.
 
 ## Target acceptance boundary
 
-Interface acceptance is not runtime support. CANN 9.1 and the official
-`Qwen/Qwen3.5-35B-A3B` model (display name: Qwen3.5-35B) must continue to fail
-closed until an exact package trio validates TP=2 with APC, MTP=2, async scheduling,
-`FULL_AND_PIECEWISE`, and `mamba_cache_mode=align` enabled. Only
-full-attention K/V may be compacted; recurrent state stays native.
+Interface acceptance alone is not runtime support. Activation is restricted to
+CANN 9.1 and the official `Qwen/Qwen3.5-35B-A3B` model (display name:
+Qwen3.5-35B), using the exact validated TP=2 profile with APC, MTP=2, async
+scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align` enabled. Other
+profiles fail closed. Only full-attention K/V may be compacted; recurrent state
+stays native.
