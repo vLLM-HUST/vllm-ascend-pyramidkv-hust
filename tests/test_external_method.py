@@ -198,10 +198,12 @@ def test_target_compatibility_is_explicit_and_fail_closed(monkeypatch) -> None:
     assert method.compatibility_reasons(runner) == ()
 
     config.cache_config.enable_prefix_caching = True
+    assert method.compatibility_reasons(runner) == ()
+
     config.speculative_config = SimpleNamespace(method="mtp", num_speculative_tokens=2)
     runner.compilation_config.cudagraph_mode = SimpleNamespace(name="FULL_AND_PIECEWISE")
     reasons = method.compatibility_reasons(runner)
 
-    assert any("required_recompute_tokens" in reason for reason in reasons)
+    assert not any("required_recompute_tokens" in reason for reason in reasons)
     assert any("MTP" in reason for reason in reasons)
     assert any("graph replay" in reason for reason in reasons)

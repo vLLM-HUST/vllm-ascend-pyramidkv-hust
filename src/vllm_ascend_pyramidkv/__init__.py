@@ -2,8 +2,8 @@
 """PyramidKV Ascend migration package.
 
 The top-level module intentionally imports neither PyTorch nor vLLM and never
-activates the provider. Runtime registration remains blocked until the shared
-KV-compression host consumes method-required prefix recompute admission.
+activates the provider. Runtime registration remains blocked until exact-stack
+serving and rollback validation is complete.
 """
 
 from __future__ import annotations

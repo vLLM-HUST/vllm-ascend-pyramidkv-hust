@@ -43,15 +43,15 @@ anchor to eager decode slots and standard Ascend attention metadata. Uniform
 methods keep their existing path; GDN remains in semantic space. Graph replay,
 MTP, and other metadata backends remain fail closed.
 
-## Remaining prefix-cache admission gap
+## Accepted prefix-cache admission
 
 The public runtime spec declares `required_recompute_tokens`, but the shared
-scheduler does not yet apply it to prefix-cache admission. PyramidKV needs the
-last `window_size` query rows; an APC hit that leaves only one uncached token
-cannot satisfy the observation contract. The external method therefore rejects
-APC until the scheduler caps cache hits at
+scheduler now applies it to prefix-cache admission. PyramidKV needs the last
+`window_size` query rows; shared-host PR #12 caps eligible cache hits at
 `prompt_len - required_recompute_tokens`, with a zero lower bound for short
-prompts.
+prompts. It also rejects an external method whose query window exceeds its
+declared recompute requirement and fails closed when APC lookup hooks are
+missing. PyramidKV accepts this contract.
 
 The shared provider must contain no PyramidKV-specific policy. Design
 coordination remains in

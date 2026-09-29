@@ -27,22 +27,21 @@ whose documented external method namespace is
 provides the accepted final-prefill query-window observation contract.
 
 Merged [PR #10](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/10)
-adds eager consumption of method-returned per-layer physical lengths. One
-method-neutral gap remains: the scheduler does not yet use
-`required_recompute_tokens` to limit prefix-cache hits, so APC can leave fewer
-query rows than PyramidKV's trailing window. Follow-up is tracked in
-[`vllm-ascend-kvcompress-hust#3`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3).
-Prefix-cache recompute admission and exact-stack serving validation remain
-open. This repository therefore still publishes no runtime provider or method
-entry point.
+adds eager consumption of method-returned per-layer physical lengths. Merged
+[PR #12](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/12)
+now consumes `required_recompute_tokens` during prefix-cache admission and
+fails closed when Query/APC contracts or host lookup seams are inconsistent.
+The method-neutral eager/APC host interface is accepted. Exact-stack serving
+validation remains open, so this repository still publishes no runtime
+provider or method entry point.
 
 The unregistered `PyramidKVMethod` development implementation targets the
 public contracts at shared-host commit
-`6e2b01bd3ea88f55ad4000681f7a861d93ce34d2`. Its CPU tests cover chunk-spanning
+`784893a9c8e33836daf3c1046251b72613a85f77`. Its CPU tests cover chunk-spanning
 query capture, transaction identity, paged materialization, and unequal
-per-layer results. It deliberately rejects APC until the shared scheduler
-consumes `required_recompute_tokens`, and it rejects MTP and graph replay under
-the current eager-only per-layer contract.
+per-layer results. APC is now admitted through the shared recompute contract;
+MTP and graph replay remain rejected under the current eager-only per-layer
+contract.
 
 ## Inspect the capability preview
 
@@ -82,9 +81,8 @@ with `--no-deps` when appropriate.
 - No `vllm_ascend.kv_cache_compression_providers` or
   `vllm_ascend_kvcompress.methods` entry point is registered.
 - No import-time monkey patching is performed.
-- Runtime activation is blocked while the shared host lacks
-  `required_recompute_tokens` prefix-cache admission and the target runtime
-  paths remain unvalidated.
+- Runtime activation is blocked while the target runtime paths remain
+  unvalidated; MTP and graph replay are still outside the per-layer contract.
 - Historical NPU, LongBench, and performance results are supporting evidence,
   not measurements of this repository's current head.
 - The current provider head has a real-device Qwen 40-to-8 GQA selection

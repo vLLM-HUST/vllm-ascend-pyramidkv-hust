@@ -2,10 +2,10 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
 """External PyramidKV method for the shared Ascend compression adapter.
 
-The module is intentionally not registered as an entry point while the shared
-host still lacks prefix-cache recompute admission for query-observing methods.
-It implements and tests the public method contract without patching host
-classes.
+The shared host now provides prefix-cache recompute admission for
+query-observing methods. This module remains intentionally unregistered until
+the exact CANN 9.1/Qwen3.5 serving and rollback gates pass. It implements and
+tests the public method contract without patching host classes.
 """
 
 from __future__ import annotations
@@ -161,8 +161,6 @@ class PyramidKVMethod(KVCompressionMethod):
         cache = self.vllm_config.cache_config
         if getattr(cache, "mamba_cache_mode", None) != "align":
             reasons.append("Qwen3.5 requires mamba_cache_mode='align'")
-        if bool(getattr(cache, "enable_prefix_caching", False)):
-            reasons.append("APC requires shared-host required_recompute_tokens admission")
         if getattr(self.vllm_config, "speculative_config", None) is not None:
             reasons.append("per-layer PyramidKV is not yet validated with MTP")
 

@@ -1,8 +1,9 @@
 # Install, inspect, and rollback
 
 This document applies to the installable capability preview. It is not a
-serving guide while prefix-cache recompute admission and exact-stack validation
-remain unresolved in the shared host.
+serving guide while exact-stack validation remains unresolved. The shared host
+now provides the required eager/APC admission contract, but MTP, graph replay,
+activation, serving, and rollback are not yet qualified for PyramidKV.
 
 ## Clean installation
 

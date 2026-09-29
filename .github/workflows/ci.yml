@@ -21,7 +21,7 @@ jobs:
           python -m pip install \
             "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
           python -m pip install --no-deps \
-            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@6e2b01bd3ea88f55ad4000681f7a861d93ce34d2"
+            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@784893a9c8e33836daf3c1046251b72613a85f77"
           python -m pip install -e ".[test]" build
       - run: ruff check .
       - run: ruff format --check .

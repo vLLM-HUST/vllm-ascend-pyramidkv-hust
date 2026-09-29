@@ -65,7 +65,7 @@ ordinary path; admission began above that boundary.
 | Query observation interface | Accepted and merged in shared-host PR #9 |
 | Per-layer physical-state interface | Accepted and merged in shared-host PR #10; eager standard metadata only |
 | External method implementation | CPU prototype available; runtime entry point intentionally unregistered |
-| Prefix-cache recompute admission | Blocked: shared scheduler does not yet consume `required_recompute_tokens` ([issue #3](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3)) |
+| Prefix-cache recompute admission | Accepted and merged in shared-host PR #12; Query/APC mismatches fail closed |
 | CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Unsupported; fail closed pending interface and serving validation |
 | TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Unsupported as a combined configuration |
 | Exact-head NPU correctness | Pending |
