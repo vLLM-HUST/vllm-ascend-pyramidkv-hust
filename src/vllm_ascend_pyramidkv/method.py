@@ -45,10 +45,7 @@ QWEN35_MODEL_TYPES = frozenset({"qwen3_5_moe_text"})
 QWEN35_FULL_ATTENTION_LAYERS = tuple(range(3, 40, 4))
 
 if METHOD_API_VERSION != REQUIRED_METHOD_API_VERSION:
-    raise RuntimeError(
-        "PyramidKV requires vllm-ascend-kvcompress-hust method API v1; "
-        f"found v{METHOD_API_VERSION}"
-    )
+    raise RuntimeError(f"PyramidKV requires vllm-ascend-kvcompress-hust method API v1; found v{METHOD_API_VERSION}")
 
 
 @dataclass(frozen=True)
