@@ -63,11 +63,11 @@ ordinary path; admission began above that boundary.
 | Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
 | Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
 | Query observation interface | Accepted and merged in shared-host PR #9 |
-| Per-layer physical-state interface | Accepted and merged in shared-host PR #10; eager standard metadata only |
-| External method implementation | CPU prototype available; runtime entry point intentionally unregistered |
+| Per-layer physical-state interface | Eager stage merged in PR #10; MTP2/FULL_AND_PIECEWISE follow-up submitted as shared-host Draft PR #13 |
+| External method implementation | CPU prototype covers target layers plus auxiliary MTP cache; runtime entry point intentionally unregistered |
 | Prefix-cache recompute admission | Accepted and merged in shared-host PR #12; Query/APC mismatches fail closed |
 | CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Unsupported; fail closed pending interface and serving validation |
-| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Unsupported as a combined configuration |
+| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Code contract implemented; unsupported until exact-stack serving validation |
 | Exact-head NPU correctness | Pending |
 | Exact-head quality/capacity/performance | Pending |
 | Alpha release | Blocked |

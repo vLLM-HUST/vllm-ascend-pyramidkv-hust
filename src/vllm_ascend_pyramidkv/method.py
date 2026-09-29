@@ -104,6 +104,8 @@ class PyramidKVMethod(KVCompressionMethod):
         alignment = QWEN35_ATTENTION_BLOCK_SIZE if model_shape.is_hybrid else ASCEND_CACHE_BLOCK_SIZE
         self.group_maximum = _round_up(_maximum_retained_tokens(self.config), alignment)
         self.layer_caches: tuple[LayerCache, ...] = ()
+        self.materialization_caches: tuple[LayerCache, ...] = ()
+        self.auxiliary_mtp_caches: tuple[LayerCache, ...] = ()
         self._layer_slots: dict[int, int] = {}
         self._request_slots: dict[str, int] = {}
         self._free_slots: list[int] = []
@@ -132,6 +134,14 @@ class PyramidKVMethod(KVCompressionMethod):
     def query_window_tokens(self) -> int:
         return self.config.window_size
 
+    @property
+    def query_layer_indices(self) -> tuple[int, ...]:
+        return self.model_shape.full_attention_layer_indices
+
+    @property
+    def requires_per_layer_physical_state(self) -> bool:
+        return True
+
     def compatibility_reasons(self, runner: Any) -> tuple[str, ...]:
         reasons: list[str] = []
         shape = self.model_shape
@@ -152,17 +162,19 @@ class PyramidKVMethod(KVCompressionMethod):
             reasons.append("BF16 model weights are required")
         if getattr(model, "quantization", None) is not None:
             reasons.append("model quantization is unsupported")
-        if not bool(getattr(model, "enforce_eager", False)):
-            reasons.append("per-layer PyramidKV currently requires eager execution")
-
         parallel = self.vllm_config.parallel_config
         if int(getattr(parallel, "tensor_parallel_size", 1)) != 2:
             reasons.append("the staged Qwen3.5 profile requires TP=2")
         cache = self.vllm_config.cache_config
         if getattr(cache, "mamba_cache_mode", None) != "align":
             reasons.append("Qwen3.5 requires mamba_cache_mode='align'")
-        if getattr(self.vllm_config, "speculative_config", None) is not None:
-            reasons.append("per-layer PyramidKV is not yet validated with MTP")
+        speculative = getattr(self.vllm_config, "speculative_config", None)
+        if speculative is not None and (
+            getattr(speculative, "method", None) != "mtp"
+            or getattr(speculative, "num_speculative_tokens", None) != 2
+            or getattr(speculative, "num_speculative_tokens_per_batch_size", None)
+        ):
+            reasons.append("only Qwen3.5 MTP2 speculative decoding is supported")
 
         scheduler = self.vllm_config.scheduler_config
         if not bool(getattr(scheduler, "async_scheduling", False)):
@@ -171,8 +183,8 @@ class PyramidKVMethod(KVCompressionMethod):
             reasons.append("the staged target requires chunked prefill")
 
         mode = getattr(getattr(runner, "compilation_config", None), "cudagraph_mode", None)
-        if getattr(mode, "name", str(mode)) != "NONE":
-            reasons.append("graph replay is unvalidated for per-layer PyramidKV")
+        if getattr(mode, "name", str(mode)) not in {"NONE", "FULL_AND_PIECEWISE"}:
+            reasons.append("PyramidKV requires eager or FULL_AND_PIECEWISE execution")
         backend = getattr(runner, "attn_backend", None)
         backend_name = backend.__name__ if isinstance(backend, type) else type(backend).__name__
         if backend_name != "AscendAttentionBackend":
@@ -189,9 +201,23 @@ class PyramidKVMethod(KVCompressionMethod):
         layer_caches: tuple[LayerCache, ...],
     ) -> None:
         expected = self.model_shape.full_attention_layer_indices
-        actual = tuple(layer.layer_index for layer in layer_caches)
+        auxiliary = tuple(layer for layer in layer_caches if _is_mtp_cache_layer(layer.name))
+        target = tuple(layer for layer in layer_caches if not _is_mtp_cache_layer(layer.name))
+        actual = tuple(layer.layer_index for layer in target)
         if actual != expected:
             raise RuntimeError(f"PyramidKV full-attention layer order changed: expected {expected}, got {actual}")
+        if auxiliary and (
+            len(auxiliary) != 1
+            or auxiliary[0].name != "mtp.layers.0.self_attn.attn"
+            or getattr(self.vllm_config.speculative_config, "method", None) != "mtp"
+            or getattr(
+                self.vllm_config.speculative_config,
+                "num_speculative_tokens",
+                None,
+            )
+            != 2
+        ):
+            raise RuntimeError("PyramidKV auxiliary cache requires exact Qwen3.5 MTP2")
         tensor_parallel_size = int(getattr(self.vllm_config.parallel_config, "tensor_parallel_size", 1))
         if self.model_shape.num_attention_heads % tensor_parallel_size:
             raise RuntimeError("query heads are not divisible by tensor parallel size")
@@ -216,15 +242,17 @@ class PyramidKVMethod(KVCompressionMethod):
         cache_dtype = layer_caches[0].k_cache.dtype
         shape = (
             max_num_reqs,
-            len(layer_caches),
+            len(target),
             self.config.window_size,
             self._local_query_heads,
             self.model_shape.head_dim,
         )
         self._query_buffers = torch.empty(shape, dtype=cache_dtype, device=device)
         self._query_scratch = torch.empty(shape[2:], dtype=cache_dtype, device=device)
-        self.layer_caches = layer_caches
-        self._layer_slots = {layer.layer_index: index for index, layer in enumerate(layer_caches)}
+        self.layer_caches = target
+        self.materialization_caches = layer_caches
+        self.auxiliary_mtp_caches = auxiliary
+        self._layer_slots = {layer.layer_index: index for index, layer in enumerate(target)}
         self._free_slots = list(reversed(range(max_num_reqs)))
 
     def capture_query(
@@ -295,6 +323,7 @@ class PyramidKVMethod(KVCompressionMethod):
             raise RuntimeError("repeat PyramidKV compression is not supported")
 
         per_layer: list[tuple[str, int]] = []
+        auxiliary_selection: tuple[torch.Tensor, int] | None = None
         participating_layers = len(self.layer_caches)
         for order, layer in enumerate(self.layer_caches):
             key = _gather_paged_prefix(
@@ -320,6 +349,8 @@ class PyramidKVMethod(KVCompressionMethod):
             )
             if selected is None:
                 raise RuntimeError("PyramidKV transaction did not cross admission")
+            if auxiliary_selection is None:
+                auxiliary_selection = selected, retained
             compact_key, compact_value = materialize_pyramid_kv(
                 paged_key,
                 paged_value,
@@ -338,6 +369,39 @@ class PyramidKVMethod(KVCompressionMethod):
                 compact_value.squeeze(0).permute(1, 0, 2).contiguous(),
             )
             per_layer.append((layer.name, retained))
+        if self.auxiliary_mtp_caches:
+            if auxiliary_selection is None:
+                raise RuntimeError("PyramidKV has no target selection for MTP cache")
+            selected, retained = auxiliary_selection
+            for layer in self.auxiliary_mtp_caches:
+                key = _gather_paged_prefix(
+                    layer.k_cache,
+                    request.source_block_ids_device,
+                    request.physical_num_tokens,
+                )
+                value = _gather_paged_prefix(
+                    layer.v_cache,
+                    request.source_block_ids_device,
+                    request.physical_num_tokens,
+                )
+                compact_key, compact_value = materialize_pyramid_kv(
+                    key.permute(1, 0, 2).unsqueeze(0),
+                    value.permute(1, 0, 2).unsqueeze(0),
+                    selected,
+                    retained,
+                    self.config.window_size,
+                )
+                _write_paged_prefix(
+                    layer.k_cache,
+                    request.destination_block_ids_device,
+                    compact_key.squeeze(0).permute(1, 0, 2).contiguous(),
+                )
+                _write_paged_prefix(
+                    layer.v_cache,
+                    request.destination_block_ids_device,
+                    compact_value.squeeze(0).permute(1, 0, 2).contiguous(),
+                )
+                per_layer.append((layer.name, retained))
         return CompressionResult(
             physical_num_tokens=self.group_maximum,
             per_layer_physical_num_tokens=tuple(per_layer),
@@ -392,3 +456,7 @@ def create_pyramidkv_method(
 ) -> KVCompressionMethod:
     """Create the external method without activating or patching a host."""
     return PyramidKVMethod(options, vllm_config, model_shape)
+
+
+def _is_mtp_cache_layer(layer_name: str) -> bool:
+    return ".mtp.layers." in f".{layer_name}."

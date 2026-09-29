@@ -37,11 +37,23 @@ to compression.
 ## Accepted per-layer physical state
 
 PyramidKV assigns different retained lengths to different layers. Shared-host
-PR #10 now validates the complete `per_layer_physical_num_tokens` map, commits
-it at the output-acknowledged transaction boundary, and applies each layer's
+PR #10 validates the complete `per_layer_physical_num_tokens` map, commits it
+at the output-acknowledged transaction boundary, and applies each layer's
 anchor to eager decode slots and standard Ascend attention metadata. Uniform
-methods keep their existing path; GDN remains in semantic space. Graph replay,
-MTP, and other metadata backends remain fail closed.
+methods keep their existing path; GDN remains in semantic space.
+
+Shared-host Draft PR #13 lets a method declare unequal per-layer state
+before graph capture, allocates stable layer-specific slot buffers, and uses
+the host's layer-keyed FIA task update seam during `FULL_AND_PIECEWISE` replay.
+It also permits a query method to select target-model layers while retaining an
+auxiliary MTP cache in the materialized result. The MTP speculative common
+metadata receives that cache's physical lengths and slots, so rejected draft
+positions are overwritten rather than advancing per-layer state. Unsupported
+graph/speculative/parallel paths remain fail closed.
+
+The PyramidKV package CI pins this candidate exactly at
+`c97dce2fa06a6963269d6d194faeffb7210c3380`; review or merge of that shared
+contract remains a prerequisite for activation.
 
 ## Accepted prefix-cache admission
 

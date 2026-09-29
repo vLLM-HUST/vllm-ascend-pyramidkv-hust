@@ -92,6 +92,8 @@ def test_factory_exposes_block_aligned_runtime_contract() -> None:
     assert isinstance(method, KVCompressionMethod)
     assert method.name == "pyramidkv"
     assert method.query_window_tokens == 4
+    assert method.query_layer_indices == (3, 7)
+    assert method.requires_per_layer_physical_state
     assert method.runtime_spec.compression_threshold_tokens == 4097
     assert method.runtime_spec.required_recompute_tokens == 4
     assert method.runtime_spec.max_physical_num_tokens == 2048
@@ -153,6 +155,75 @@ def test_query_capture_spans_chunks_and_materializes_per_layer_state() -> None:
     assert "request" not in method._request_slots
 
 
+def test_mtp2_auxiliary_cache_reuses_a_target_selection() -> None:
+    torch.manual_seed(17)
+    config = _config()
+    config.speculative_config = SimpleNamespace(
+        method="mtp",
+        num_speculative_tokens=2,
+        num_speculative_tokens_per_batch_size=None,
+    )
+    method = PyramidKVMethod(_options(), config, _small_shape())
+    target = tuple(
+        LayerCache(
+            name=f"model.layers.{layer_index}.self_attn.attn",
+            layer_index=layer_index,
+            k_cache=torch.randn(49, 128, 1, 8),
+            v_cache=torch.randn(49, 128, 1, 8),
+        )
+        for layer_index in (3, 7)
+    )
+    mtp = LayerCache(
+        name="mtp.layers.0.self_attn.attn",
+        layer_index=0,
+        k_cache=torch.randn(49, 128, 1, 8),
+        v_cache=torch.randn(49, 128, 1, 8),
+    )
+    method.bind_model_runner(
+        SimpleNamespace(max_num_reqs=2, device=torch.device("cpu")),
+        (*target, mtp),
+    )
+    for layer in target:
+        method.capture_query(
+            layer,
+            torch.randn(4, 2, 8),
+            (QueryBatchSpan("request", 0, 4),),
+        )
+    source = tuple(range(33))
+    destination = tuple(range(33, 49))
+    plan = CompressionPlan(4097, 2048, source, destination)
+    method.complete_query_observation(
+        QueryObservation(
+            request_id="request",
+            plan=plan,
+            semantic_num_tokens=4097,
+            window_tokens=4,
+            layer_indices=(3, 7),
+        )
+    )
+    before = mtp.k_cache[list(destination)].clone()
+
+    result = method.compress(
+        CompressionRequest(
+            request_id="request",
+            semantic_num_tokens=4097,
+            physical_num_tokens=4097,
+            source_block_ids=(source,),
+            destination_block_ids=(destination,),
+            source_block_ids_device=torch.tensor(source, dtype=torch.int32),
+            destination_block_ids_device=torch.tensor(destination, dtype=torch.int32),
+            plan=plan,
+        )
+    )
+
+    assert result.per_layer_physical_num_tokens == (
+        ("model.layers.3.self_attn.attn", 190),
+        ("model.layers.7.self_attn.attn", 66),
+        ("mtp.layers.0.self_attn.attn", 190),
+    )
+    assert not torch.equal(before, mtp.k_cache[list(destination)])
+
+
 def test_query_completion_rejects_incomplete_window() -> None:
     method, caches = _bound_method()
     method.capture_query(
@@ -205,5 +276,5 @@ def test_target_compatibility_is_explicit_and_fail_closed(monkeypatch) -> None:
     reasons = method.compatibility_reasons(runner)
 
     assert not any("required_recompute_tokens" in reason for reason in reasons)
-    assert any("MTP" in reason for reason in reasons)
-    assert any("graph replay" in reason for reason in reasons)
+    assert not any("MTP" in reason for reason in reasons)
+    assert not any("graph" in reason for reason in reasons)

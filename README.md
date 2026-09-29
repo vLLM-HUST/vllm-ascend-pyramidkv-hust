@@ -31,17 +31,21 @@ adds eager consumption of method-returned per-layer physical lengths. Merged
 [PR #12](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/12)
 now consumes `required_recompute_tokens` during prefix-cache admission and
 fails closed when Query/APC contracts or host lookup seams are inconsistent.
-The method-neutral eager/APC host interface is accepted. Exact-stack serving
-validation remains open, so this repository still publishes no runtime
-provider or method entry point.
+Draft [PR #13](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/13)
+adds predeclared, address-stable per-layer
+metadata for `FULL_AND_PIECEWISE`, layer-scoped Query observation, and an MTP2
+speculative-common metadata view with draft rollback safety. Exact-stack
+serving validation remains open, so this repository still publishes no
+runtime provider or method entry point.
 
 The unregistered `PyramidKVMethod` development implementation targets the
 public contracts at shared-host commit
-`784893a9c8e33836daf3c1046251b72613a85f77`. Its CPU tests cover chunk-spanning
-query capture, transaction identity, paged materialization, and unequal
-per-layer results. APC is now admitted through the shared recompute contract;
-MTP and graph replay remain rejected under the current eager-only per-layer
-contract.
+`c97dce2fa06a6963269d6d194faeffb7210c3380`. Its
+CPU tests cover chunk-spanning query capture, transaction identity, paged
+materialization, unequal per-layer results, auxiliary MTP cache materialization,
+and graph-stable metadata. APC, exact Qwen3.5 MTP2, and
+`FULL_AND_PIECEWISE` are now admitted by the code contract but remain disabled
+at packaging level until exact-stack serving and rollback validation passes.
 
 ## Inspect the capability preview
 
@@ -82,7 +86,8 @@ with `--no-deps` when appropriate.
   `vllm_ascend_kvcompress.methods` entry point is registered.
 - No import-time monkey patching is performed.
 - Runtime activation is blocked while the target runtime paths remain
-  unvalidated; MTP and graph replay are still outside the per-layer contract.
+  unvalidated; the MTP/graph contract is implemented but not yet qualified on
+  the exact package trio.
 - Historical NPU, LongBench, and performance results are supporting evidence,
   not measurements of this repository's current head.
 - The current provider head has a real-device Qwen 40-to-8 GQA selection
@@ -92,9 +97,9 @@ with `--no-deps` when appropriate.
   `Qwen/Qwen3.5-35B-A3B` (display name: Qwen3.5-35B), BF16, TP=2, APC, MTP=2,
   async scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. None
   of that combined configuration is currently claimed as supported.
-- Release promotion requires the remaining shared interface followed by
-  exact-head installation, activation, serving correctness, rollback, quality,
-  capacity, latency, throughput, and HBM evidence.
+- Release promotion requires shared-host review and merge followed by exact-head
+  installation, activation, serving correctness, rollback, quality, capacity,
+  latency, throughput, and HBM evidence.
 
 See:
 

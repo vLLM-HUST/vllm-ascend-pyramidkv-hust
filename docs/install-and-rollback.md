@@ -2,8 +2,9 @@
 
 This document applies to the installable capability preview. It is not a
 serving guide while exact-stack validation remains unresolved. The shared host
-now provides the required eager/APC admission contract, but MTP, graph replay,
-activation, serving, and rollback are not yet qualified for PyramidKV.
+provides the eager/APC contract. The MTP2/graph follow-up is under review in
+shared-host PR #13; activation, serving, and rollback are not yet qualified for
+PyramidKV.
 
 ## Clean installation
 
