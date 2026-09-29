@@ -1,10 +1,8 @@
 # Install, inspect, and rollback
 
-This document applies to the installable capability preview. It is not a
-serving guide while exact-stack validation remains unresolved. The shared host
-provides the eager/APC contract. The MTP2/graph follow-up is under review in
-shared-host PR #13; activation, serving, and rollback are not yet qualified for
-PyramidKV.
+This document applies to the active external method. The shared adapter owns
+the scheduler/worker lifecycle, while this package supplies the `pyramidkv`
+method. The exact serving profile is documented in the support matrix.
 
 ## Clean installation
 
@@ -13,13 +11,17 @@ python -m venv .venv-pyramidkv
 source .venv-pyramidkv/bin/activate
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
+python -m pip install --no-deps /path/to/vllm-ascend-kvcompress-hust
 python -m pip install /path/to/vllm-ascend-pyramidkv-hust
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
+vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
+vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
 ```
 
-Inspection must report an `import_only` implementation and an activation
-blocker. The package deliberately registers no runtime provider or method
-entry point. Extension Manager enablement must fail closed.
+Inspection must report the active
+`vllm_ascend_kvcompress.methods:pyramidkv` implementation without an
+activation blocker. Host compatibility checks still reject every unqualified
+runtime profile.
 
 ## Offline development tests
 
@@ -41,10 +43,11 @@ ASCEND_RT_VISIBLE_DEVICES=0 PYRAMIDKV_RUN_NPU_TESTS=1 \
 
 ## Disable and rollback
 
-Because this preview cannot activate, rollback consists only of uninstalling
-the distribution and confirming that its Python package is absent:
+Disable the method bundle before uninstalling it. The shared adapter may remain
+enabled for other compression methods:
 
 ```bash
+vllm-hust-ext extension disable org.vllm-hust.ascend-pyramidkv
 python -m pip uninstall -y vllm-ascend-pyramidkv-hust
 python - <<'PY'
 import importlib.util

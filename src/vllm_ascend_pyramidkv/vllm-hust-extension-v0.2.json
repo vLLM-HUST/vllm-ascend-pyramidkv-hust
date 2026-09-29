@@ -5,8 +5,8 @@
   "kind": "in_process_plugin",
   "host": {
     "provider": "vllm",
-    "name": "vllm",
-    "version_range": ">=0.27.1,<0.28"
+    "name": "vllm-ascend",
+    "version_range": ">=0.23.0.post1,<0.26,!=0.24.*,!=0.25.0.*"
   },
   "runtime": {
     "type": "python",
@@ -17,15 +17,16 @@
   "protocols": [
     {
       "name": "vllm.kv-cache-compression.transactional",
-      "version_range": ">=1,<2"
+      "version_range": null
     }
   ],
   "implementation": [
     {
-      "type": "python_module",
-      "module": "vllm_ascend_pyramidkv",
-      "object": "PyramidKVContractProposal",
-      "status": "import_only"
+      "type": "python_entry_point",
+      "group": "vllm_ascend_kvcompress.methods",
+      "name": "pyramidkv",
+      "object": "vllm_ascend_pyramidkv.method:create_pyramidkv_method",
+      "status": "active"
     }
   ],
   "requires_services": [],
@@ -40,7 +41,12 @@
     }
   ],
   "activation": {
-    "entry_points": [],
+    "entry_points": [
+      {
+        "group": "vllm_ascend_kvcompress.methods",
+        "name": "pyramidkv"
+      }
+    ],
     "environment": {},
     "additional_config": {}
   }

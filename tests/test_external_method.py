@@ -266,15 +266,15 @@ def test_target_compatibility_is_explicit_and_fail_closed(monkeypatch) -> None:
     )
     monkeypatch.setattr(torch.version, "cann", "9.1.0", raising=False)
 
-    assert method.compatibility_reasons(runner) == ()
+    reasons = method.compatibility_reasons(runner)
+    assert "the staged target requires prefix caching" in reasons
+    assert "the staged target requires Qwen3.5 MTP2" in reasons
+    assert "the staged target requires FULL_AND_PIECEWISE execution" in reasons
 
     config.cache_config.enable_prefix_caching = True
-    assert method.compatibility_reasons(runner) == ()
-
     config.speculative_config = SimpleNamespace(method="mtp", num_speculative_tokens=2)
     runner.compilation_config.cudagraph_mode = SimpleNamespace(name="FULL_AND_PIECEWISE")
     reasons = method.compatibility_reasons(runner)
 
+    assert reasons == ()
     assert not any("required_recompute_tokens" in reason for reason in reasons)
-    assert not any("MTP" in reason for reason in reasons)
-    assert not any("graph" in reason for reason in reasons)

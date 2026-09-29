@@ -3,13 +3,13 @@
 Owner-maintained extraction of the PyramidKV provider work preserved in the
 archived vLLM-HUST and vLLM-Ascend-HUST repositories.
 
-**Graduation target: a public, runnable Extension Workshop plugin. Current
-status: capability preview, not a runnable alpha.**
+**Current status: active external method with an exact-stack functional
+qualification; quality and performance promotion remain pending.**
 
-The package is discoverable as `org.vllm-hust.ascend-pyramidkv`, but its
-Manifest 0.2 carrier is deliberately marked `import_only`. Extension Manager
-inspection works and enablement fails closed. Importing the top-level package
-never patches or activates vLLM.
+The package is discoverable as `org.vllm-hust.ascend-pyramidkv` and publishes
+the `pyramidkv` method through the shared adapter's
+`vllm_ascend_kvcompress.methods` entry-point group. The manifest carrier is
+active. Importing the top-level package never patches or activates vLLM.
 
 The release-validation model is **Qwen3.5-35B**, using the official model ID
 `Qwen/Qwen3.5-35B-A3B`. The package also retains the earlier Qwen2.5-14B
@@ -34,20 +34,20 @@ fails closed when Query/APC contracts or host lookup seams are inconsistent.
 Draft [PR #13](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/13)
 adds predeclared, address-stable per-layer
 metadata for `FULL_AND_PIECEWISE`, layer-scoped Query observation, and an MTP2
-speculative-common metadata view with draft rollback safety. Exact-stack
-serving validation remains open, so this repository still publishes no
-runtime provider or method entry point.
+speculative-common metadata view with draft rollback safety. Follow-up fixes
+cover synthetic FULL capture batches, graph-replay query observation, and
+empty async execution steps.
 
-The unregistered `PyramidKVMethod` development implementation targets the
-public contracts at shared-host commit
-`c97dce2fa06a6963269d6d194faeffb7210c3380`. Its
+The registered `PyramidKVMethod` implementation targets the public contracts
+on shared-host PR #13. Its
 CPU tests cover chunk-spanning query capture, transaction identity, paged
 materialization, unequal per-layer results, auxiliary MTP cache materialization,
-and graph-stable metadata. APC, exact Qwen3.5 MTP2, and
-`FULL_AND_PIECEWISE` are now admitted by the code contract but remain disabled
-at packaging level until exact-stack serving and rollback validation passes.
+and graph-stable metadata. The combined APC, exact Qwen3.5 MTP2, async,
+chunked-prefill, and `FULL_AND_PIECEWISE` profile completed a 5007-token
+functional serving request on TP=2 Ascend 910B2 with CANN 9.1; the transaction
+compressed the full-attention KV state to 2048 tokens and completed decode.
 
-## Inspect the capability preview
+## Inspect and enable
 
 ```bash
 python -m pip install \
@@ -56,9 +56,13 @@ python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```
 
-Inspection must report that the implementation is `import_only`. Do not enable
-or launch it through Extension Manager; no current host version is advertised
-as serving-compatible.
+Inspection must report an active `vllm_ascend_kvcompress.methods:pyramidkv`
+implementation. Enable both the shared lifecycle owner and this method bundle:
+
+```bash
+vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
+vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
+```
 
 For standalone provider tests, install the test extra in an environment with a
 host-compatible PyTorch build:
@@ -81,25 +85,22 @@ with `--no-deps` when appropriate.
 
 ## Current boundary
 
-- No `vllm.general_plugins` entry point is registered.
-- No `vllm_ascend.kv_cache_compression_providers` or
-  `vllm_ascend_kvcompress.methods` entry point is registered.
+- The package registers only the method entry point; the shared adapter owns
+  the `vllm.general_plugins` host integration.
 - No import-time monkey patching is performed.
-- Runtime activation is blocked while the target runtime paths remain
-  unvalidated; the MTP/graph contract is implemented but not yet qualified on
-  the exact package trio.
+- Runtime compatibility fails closed outside the exact qualified model,
+  dtype, TP, CANN, scheduling, MTP, cache, and Graph profile.
 - Historical NPU, LongBench, and performance results are supporting evidence,
   not measurements of this repository's current head.
 - The current provider head has a real-device Qwen 40-to-8 GQA selection
   oracle on Ascend 910B2/CANN 9.0; this does not replace serving validation and
   will not be rerun as a substitute.
-- The requested target is CANN 9.1, official model
+- The qualified functional target is CANN 9.1, official model
   `Qwen/Qwen3.5-35B-A3B` (display name: Qwen3.5-35B), BF16, TP=2, APC, MTP=2,
-  async scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. None
-  of that combined configuration is currently claimed as supported.
-- Release promotion requires shared-host review and merge followed by exact-head
-  installation, activation, serving correctness, rollback, quality, capacity,
-  latency, throughput, and HBM evidence.
+  async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, and
+  `mamba_cache_mode=align`.
+- Release promotion still requires shared-host review/merge, manager rollback
+  evidence, and quality, capacity, latency, throughput, and HBM evidence.
 
 See:
 

@@ -3,9 +3,10 @@
 """External PyramidKV method for the shared Ascend compression adapter.
 
 The shared host now provides prefix-cache recompute admission for
-query-observing methods. This module remains intentionally unregistered until
-the exact CANN 9.1/Qwen3.5 serving and rollback gates pass. It implements and
-tests the public method contract without patching host classes.
+query-observing methods. This module is registered through the shared adapter's
+public method entry-point group, without patching host classes. Extension
+Manager activation is limited by exact host checks to the qualified
+CANN 9.1/Qwen3.5 serving profile.
 """
 
 from __future__ import annotations
@@ -168,13 +169,15 @@ class PyramidKVMethod(KVCompressionMethod):
         cache = self.vllm_config.cache_config
         if getattr(cache, "mamba_cache_mode", None) != "align":
             reasons.append("Qwen3.5 requires mamba_cache_mode='align'")
+        if not bool(getattr(cache, "enable_prefix_caching", False)):
+            reasons.append("the staged target requires prefix caching")
         speculative = getattr(self.vllm_config, "speculative_config", None)
-        if speculative is not None and (
+        if speculative is None or (
             getattr(speculative, "method", None) != "mtp"
             or getattr(speculative, "num_speculative_tokens", None) != 2
             or getattr(speculative, "num_speculative_tokens_per_batch_size", None)
         ):
-            reasons.append("only Qwen3.5 MTP2 speculative decoding is supported")
+            reasons.append("the staged target requires Qwen3.5 MTP2")
 
         scheduler = self.vllm_config.scheduler_config
         if not bool(getattr(scheduler, "async_scheduling", False)):
@@ -183,8 +186,8 @@ class PyramidKVMethod(KVCompressionMethod):
             reasons.append("the staged target requires chunked prefill")
 
         mode = getattr(getattr(runner, "compilation_config", None), "cudagraph_mode", None)
-        if getattr(mode, "name", str(mode)) not in {"NONE", "FULL_AND_PIECEWISE"}:
-            reasons.append("PyramidKV requires eager or FULL_AND_PIECEWISE execution")
+        if getattr(mode, "name", str(mode)) != "FULL_AND_PIECEWISE":
+            reasons.append("the staged target requires FULL_AND_PIECEWISE execution")
         backend = getattr(runner, "attn_backend", None)
         backend_name = backend.__name__ if isinstance(backend, type) else type(backend).__name__
         if backend_name != "AscendAttentionBackend":
@@ -454,7 +457,7 @@ def create_pyramidkv_method(
     vllm_config: Any,
     model_shape: ModelShape,
 ) -> KVCompressionMethod:
-    """Create the external method without activating or patching a host."""
+    """Create the external method without patching host classes."""
     return PyramidKVMethod(options, vllm_config, model_shape)
 
 

@@ -1,8 +1,8 @@
 # Support matrix
 
-This matrix separates the recovered historical profile from the current
-capability preview. CPU coverage and a provider-only NPU oracle are available;
-there is no current serving support claim.
+This matrix separates the recovered historical profile from the narrowly
+qualified current runtime profile. CPU coverage, a provider-only NPU oracle,
+and exact-stack functional serving evidence are available.
 
 ## Release-validation target
 
@@ -59,15 +59,15 @@ ordinary path; admission began above that boundary.
 | Package installation and metadata inspection | Available |
 | Offline CPU algorithm and compatibility tests | Available |
 | Historical Qwen2.5-14B grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9; not release evidence |
-| Extension descriptor activation | Blocked (`import_only`) |
+| Extension descriptor activation | Active external method entry point |
 | Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
 | Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
 | Query observation interface | Accepted and merged in shared-host PR #9 |
 | Per-layer physical-state interface | Eager stage merged in PR #10; MTP2/FULL_AND_PIECEWISE follow-up submitted as shared-host Draft PR #13 |
-| External method implementation | CPU prototype covers target layers plus auxiliary MTP cache; runtime entry point intentionally unregistered |
+| External method implementation | Registered; covers target layers plus auxiliary MTP cache |
 | Prefix-cache recompute admission | Accepted and merged in shared-host PR #12; Query/APC mismatches fail closed |
-| CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Unsupported; fail closed pending interface and serving validation |
-| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Code contract implemented; unsupported until exact-stack serving validation |
-| Exact-head NPU correctness | Pending |
+| CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Functional serving smoke passed on Ascend 910B2 |
+| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Functional 5007-token request passed; 5007-to-2048 compression committed on both TP workers |
+| Exact-head NPU correctness | Functional path passed; task-quality evaluation pending |
 | Exact-head quality/capacity/performance | Pending |
-| Alpha release | Blocked |
+| Alpha release | Pending shared-host merge, rollback, quality, capacity, and performance evidence |
