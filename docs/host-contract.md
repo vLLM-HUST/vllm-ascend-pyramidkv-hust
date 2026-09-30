@@ -52,7 +52,11 @@ positions are overwritten rather than advancing per-layer state. Unsupported
 graph/speculative/parallel paths remain fail closed.
 
 The PyramidKV package CI pins the merged shared-host contract exactly at
-`d5507c2bcedb642ebf66c599cee2bd5b9731a84c`.
+`a82e08798c10cee8bc0f0468fb0b05def064ae78` (release PR #14). This
+versions the shared method API as `METHOD_API_VERSION = 1` and the package as
+`0.9.0`; PyramidKV requires `>=0.9,<0.10`. Source-based CI does not establish
+availability from the approved package source. Verify the published package
+before merging activation or running release qualification.
 
 ## Accepted prefix-cache admission
 
