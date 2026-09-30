@@ -16,10 +16,11 @@ def test_provenance_records_exact_legacy_anchors() -> None:
         assert revision in provenance
 
 
-def test_docs_do_not_claim_a_current_runnable_release() -> None:
+def test_docs_separate_functional_qualification_from_release_promotion() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     matrix = (ROOT / "docs" / "support-matrix.md").read_text(encoding="utf-8")
 
-    assert "not a runnable alpha" in readme
-    assert "import_only" in readme
-    assert "Alpha release | Blocked" in matrix
+    assert "exact-stack functional" in readme
+    assert "required_recompute_tokens" in readme
+    assert "MTP2/FULL_AND_PIECEWISE stage merged in shared-host PR #13" in matrix
+    assert "Alpha release | Pending quality, capacity, and performance evidence" in matrix
