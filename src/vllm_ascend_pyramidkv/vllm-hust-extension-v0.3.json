@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.2-experimental",
+  "schema_version": "0.3-experimental",
   "extension_id": "org.vllm-hust.ascend-pyramidkv",
   "extension_version": "0.2.0.dev0",
   "kind": "in_process_plugin",
@@ -30,6 +30,19 @@
     }
   ],
   "requires_services": [],
+  "requires_extensions": [
+    {
+      "extension_id": "org.vllm-hust.ascend-kvcompress",
+      "version_range": ">=0.9,<0.10"
+    }
+  ],
+  "resource_claims": [
+    {
+      "resource": "vllm.kv-cache.compression-method.pyramidkv",
+      "scope": "vllm-process",
+      "mode": "exclusive"
+    }
+  ],
   "components": [
     {
       "component_id": "pyramidkv-provider",

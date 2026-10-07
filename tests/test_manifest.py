@@ -13,7 +13,7 @@ def test_distribution_requires_versioned_shared_host() -> None:
 
 
 def test_descriptor_publishes_active_external_method() -> None:
-    manifest = load_manifest(Path(vllm_ascend_pyramidkv.__file__).with_name("vllm-hust-extension-v0.2.json"))
+    manifest = load_manifest(Path(vllm_ascend_pyramidkv.__file__).with_name("vllm-hust-extension-v0.3.json"))
 
     assert manifest.bundle_id == "org.vllm-hust.ascend-pyramidkv"
     assert manifest.kind == "in_process_plugin"
@@ -21,6 +21,17 @@ def test_descriptor_publishes_active_external_method() -> None:
     assert manifest.host.name == "vllm-ascend"
     assert manifest.host.version_range == (">=0.23.0.post1,<0.26,!=0.24.*,!=0.25.0.*")
     assert manifest.protocols[0].version_range is None
+    assert manifest.schema_version == "0.3-experimental"
+    assert tuple(
+        (dependency.extension_id, dependency.version_range) for dependency in manifest.requires_extensions
+    ) == (("org.vllm-hust.ascend-kvcompress", ">=0.9,<0.10"),)
+    assert tuple((claim.resource, claim.scope, claim.mode) for claim in manifest.resource_claims) == (
+        (
+            "vllm.kv-cache.compression-method.pyramidkv",
+            "vllm-process",
+            "exclusive",
+        ),
+    )
     assert activation_blocker(manifest) is None
     assert tuple((item.group, item.name) for item in manifest.activation.entry_points) == (
         ("vllm_ascend_kvcompress.methods", "pyramidkv"),

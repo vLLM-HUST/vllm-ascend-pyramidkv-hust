@@ -9,7 +9,10 @@ qualification; quality and performance promotion remain pending.**
 The package is discoverable as `org.vllm-hust.ascend-pyramidkv` and publishes
 the `pyramidkv` method through the shared adapter's
 `vllm_ascend_kvcompress.methods` entry-point group. The manifest carrier is
-active. Importing the top-level package never patches or activates vLLM.
+active. Manifest 0.3 declares the shared adapter as an explicit Bundle
+dependency and claims the PyramidKV method name exclusively, so ECPA rejects
+missing/disabled/incompatible owners and duplicate registrations before host
+startup. Importing the top-level package never patches or activates vLLM.
 
 The release-validation model is **Qwen3.5-35B**, using the official model ID
 `Qwen/Qwen3.5-35B-A3B`. The package also retains the earlier Qwen2.5-14B
@@ -52,7 +55,7 @@ compressed the full-attention KV state to 2048 tokens and completed decode.
 
 ```bash
 python -m pip install \
-  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
+  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
 python -m pip install --no-deps "vllm-ascend-kvcompress-hust>=0.9,<0.10"
 python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
@@ -65,6 +68,11 @@ implementation. Enable both the shared lifecycle owner and this method bundle:
 vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
 vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
 ```
+
+ECPA intentionally refuses the second command when the shared owner is not
+installed, version-compatible, and already enabled. Enabling this Bundle
+registers the method; selecting `pyramidkv` and its method configuration still
+belongs to the shared adapter's saved configuration.
 
 For standalone provider tests, install the test extra in an environment with a
 host-compatible PyTorch build:

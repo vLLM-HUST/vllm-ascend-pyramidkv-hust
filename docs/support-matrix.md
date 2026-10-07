@@ -59,7 +59,7 @@ ordinary path; admission began above that boundary.
 | Package installation and metadata inspection | Available |
 | Offline CPU algorithm and compatibility tests | Available |
 | Historical Qwen2.5-14B grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9; not release evidence |
-| Extension descriptor activation | Active external method entry point |
+| Extension descriptor activation | Active Manifest 0.3 external method entry point; explicit shared-owner dependency and exclusive method-name claim |
 | Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
 | Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
 | Query observation interface | Accepted and merged in shared-host PR #9 |
