@@ -19,13 +19,15 @@ jobs:
       - name: Install extension manager and package
         run: |
           python -m pip install \
-            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@9fb467447e95d753f7002b28575d6802f4347181"
+            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
+          python -m pip install --no-deps \
+            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@a82e08798c10cee8bc0f0468fb0b05def064ae78"
           python -m pip install -e ".[test]" build
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
       - run: python -m build
-      - name: Verify descriptor remains fail closed
+      - name: Verify active descriptor contract
         run: |
           vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
           python - <<'PY'
@@ -36,8 +38,65 @@ jobs:
 
           manifest = load_manifest(
               Path(vllm_ascend_pyramidkv.__file__).with_name(
-                  "vllm-hust-extension-v0.2.json"
+                  "vllm-hust-extension-v0.3.json"
               )
           )
-          assert activation_blocker(manifest) is not None
+          assert activation_blocker(manifest) is None
+          assert manifest.experimental
+          assert manifest.schema_version == "0.3-experimental"
+          assert tuple(
+              (dependency.extension_id, dependency.version_range)
+              for dependency in manifest.requires_extensions
+          ) == (("org.vllm-hust.ascend-kvcompress", ">=0.9,<0.10"),)
+          assert tuple(
+              (claim.resource, claim.scope, claim.mode)
+              for claim in manifest.resource_claims
+          ) == (("vllm.kv-cache.compression-method.pyramidkv",
+                 "vllm-process", "exclusive"),)
+          assert tuple(
+              (item.group, item.name)
+              for item in manifest.activation.entry_points
+          ) == (("vllm_ascend_kvcompress.methods", "pyramidkv"),)
+          assert manifest.components[0].implementation_ref == (
+              "vllm_ascend_pyramidkv.method:create_pyramidkv_method"
+          )
           PY
+      - name: Verify clean-wheel ECPA dependency lifecycle
+        if: matrix.python == '3.12'
+        run: |
+          python -m venv .ecpa-smoke
+          .ecpa-smoke/bin/python -m pip install \
+            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
+          .ecpa-smoke/bin/python -m pip install --no-deps \
+            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@a82e08798c10cee8bc0f0468fb0b05def064ae78" \
+            dist/vllm_ascend_pyramidkv_hust-*.whl
+          export XDG_CONFIG_HOME="$PWD/.ecpa-state/config"
+          export XDG_STATE_HOME="$PWD/.ecpa-state/state"
+          export XDG_CACHE_HOME="$PWD/.ecpa-state/cache"
+          cli=.ecpa-smoke/bin/vllm-hust-ext
+          "$cli" extension list \
+            | grep 'org.vllm-hust.ascend-pyramidkv 0.2.0.dev0 disabled'
+          if "$cli" extension enable org.vllm-hust.ascend-pyramidkv; then
+            echo 'dependency was not enforced' >&2
+            exit 1
+          fi
+          "$cli" extension enable org.vllm-hust.ascend-kvcompress
+          "$cli" extension enable org.vllm-hust.ascend-pyramidkv
+          "$cli" extension inspect org.vllm-hust.ascend-pyramidkv \
+            | grep '"activation_ready": true'
+          "$cli" extension plan org.vllm-hust.ascend-pyramidkv \
+            | grep 'vllm.kv-cache.compression-method.pyramidkv'
+          "$cli" extension render org.vllm-hust.ascend-pyramidkv \
+            | grep 'vllm.kv-cache.compression-method.pyramidkv'
+          if "$cli" run --dry-run -- python -c pass; then
+            echo 'unverified host was unexpectedly accepted' >&2
+            exit 1
+          fi
+          if "$cli" extension disable org.vllm-hust.ascend-kvcompress; then
+            echo 'enabled dependency was unexpectedly removable' >&2
+            exit 1
+          fi
+          "$cli" extension disable org.vllm-hust.ascend-pyramidkv
+          "$cli" extension disable org.vllm-hust.ascend-kvcompress
+          "$cli" extension forget org.vllm-hust.ascend-pyramidkv
+          "$cli" extension forget org.vllm-hust.ascend-kvcompress

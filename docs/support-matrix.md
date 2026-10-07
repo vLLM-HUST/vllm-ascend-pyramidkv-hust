@@ -1,8 +1,23 @@
 # Support matrix
 
-This matrix separates the recovered historical profile from current package
-claims. The current package is `import_only`; every runtime combination is
-therefore pending rather than supported.
+This matrix separates the recovered historical profile from the narrowly
+qualified current runtime profile. CPU coverage, a provider-only NPU oracle,
+and exact-stack functional serving evidence are available.
+
+## Release-validation target
+
+| Dimension | Required value |
+| --- | --- |
+| Display name | Qwen3.5-35B |
+| Exact model ID | `Qwen/Qwen3.5-35B-A3B` |
+| Model family | Qwen3.5 hybrid MoE (`qwen3_5_moe_text`) |
+| Dtype | BF16 |
+| Runtime | CANN 9.1, Ascend, TP=2 |
+| Required features | APC, MTP=2, async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, `mamba_cache_mode=align` |
+
+The Qwen2.5-14B result below is retained only as historical/provider-only
+evidence. It must not be reported as the release-validation model or used to
+claim that the current plugin is runnable.
 
 ## Historical baseline
 
@@ -43,9 +58,18 @@ ordinary path; admission began above that boundary.
 | --- | --- |
 | Package installation and metadata inspection | Available |
 | Offline CPU algorithm and compatibility tests | Available |
-| Extension Manager enablement | Blocked by `import_only` manifest |
-| Current vLLM-HUST host integration | Pending provider-neutral host contract |
-| Current vLLM-Ascend-HUST integration | Pending provider-neutral Ascend hook |
-| Exact-head NPU correctness | Pending |
+| Historical Qwen2.5-14B grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9; not release evidence |
+| Extension descriptor activation | Active Manifest 0.3 external method entry point; explicit shared-owner dependency and exclusive method-name claim |
+| Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
+| Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
+| Query observation interface | Accepted and merged in shared-host PR #9 |
+| Per-layer physical-state interface | Eager stage merged in PR #10; MTP2/FULL_AND_PIECEWISE stage merged in shared-host PR #13 |
+| External method implementation | Registered; covers target layers plus auxiliary MTP cache |
+| Prefix-cache recompute admission | Accepted and merged in shared-host PR #12; Query/APC mismatches fail closed |
+| CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Functional serving smoke passed on Ascend 910B2 |
+| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Functional 5007-token request passed; 5007-to-2048 compression committed on both TP workers |
+| Candidate-wheel Manager lifecycle and SWE C4/60s | Passed: 21 successful requests, 10 matching compression transactions on both TP ranks, prefix hits, real MTP acceptance, rollback and device release; see [receipt](../evidence/current/2026-09-30-candidate-qualification.json) |
+| Published 0.9.0 installation acceptance | Pending approved package-source availability; local candidate-wheel qualification does not replace it |
+| Exact-head NPU correctness | Functional path passed; task-quality evaluation pending |
 | Exact-head quality/capacity/performance | Pending |
-| Alpha release | Blocked |
+| Alpha release | Pending quality, capacity, and performance evidence; functional rollback passed |

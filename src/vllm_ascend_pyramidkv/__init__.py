@@ -2,9 +2,8 @@
 """PyramidKV Ascend migration package.
 
 The top-level module intentionally imports neither PyTorch nor vLLM and never
-activates the provider. The Extension Manager can discover this descriptor but
-must refuse enablement while the manifest implementation status is
-``import_only``.
+activates the provider. Runtime registration remains blocked until exact-stack
+serving and rollback validation is complete.
 """
 
 from __future__ import annotations
@@ -12,18 +11,17 @@ from __future__ import annotations
 from typing import Any
 
 __all__ = ["PyramidKVContractProposal", "get_provider"]
-__version__ = "0.1.0.dev0"
+__version__ = "0.2.0.dev0"
 
 
 class PyramidKVContractProposal:
-    """Metadata-only proposal; this class performs no runtime activation."""
+    """Descriptor-only proposal for the future method contract."""
 
 
 def get_provider(config: Any) -> Any:
     """Lazily load the migration provider for offline verification.
 
-    This helper does not register with vLLM. It exists so schema-v1 behavior
-    can be tested while a current provider-neutral host contract is developed.
+    This helper is for standalone tests and does not register with a host.
     """
 
     from vllm_ascend_pyramidkv.registry import (
