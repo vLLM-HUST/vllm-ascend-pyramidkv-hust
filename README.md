@@ -123,3 +123,11 @@ See:
 - [legacy evidence inventory](evidence/legacy/README.md)
 - [public historical Ascend 910B2 result](evidence/legacy/2026-08-13-ascend910b2/README.md)
 - [current provider-only Ascend 910B2 oracle](evidence/current/2026-09-03-provider-npu/README.md)
+
+## Canonical MOD metadata
+
+Repository identity, directly responsible maintainers, advisor status, default-off
+activation, rollback, scope, and evidence qualification are recorded in
+[`MOD_METADATA.json`](MOD_METADATA.json). `advisor_status: unknown` is not the
+same as confirmed `none`. Performance statements remain limited to the workloads
+and evidence labels recorded there; they are not general online claims.
