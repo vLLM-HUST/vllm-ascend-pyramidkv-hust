@@ -93,6 +93,11 @@ Do not install a generic PyTorch wheel over an existing torch-npu environment.
 Use the matched PyTorch supplied by the Ascend host and install this package
 with `--no-deps` when appropriate.
 
+The repository also ships a reproducible method-level benchmark and a checked-in
+evidence validator. See [method benchmark](docs/method-benchmark.md). These
+tools report algorithm cost and receipt consistency; they do not replace the
+paired exact-head Ascend serving runs required for release promotion.
+
 ## Current boundary
 
 - The package registers only the method entry point; the shared adapter owns
@@ -123,6 +128,7 @@ See:
 - [legacy evidence inventory](evidence/legacy/README.md)
 - [public historical Ascend 910B2 result](evidence/legacy/2026-08-13-ascend910b2/README.md)
 - [current provider-only Ascend 910B2 oracle](evidence/current/2026-09-03-provider-npu/README.md)
+- [current-head method-level NPU benchmark](evidence/current/2026-10-08-method-npu/README.md)
 
 ## Canonical MOD metadata
 

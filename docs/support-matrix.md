@@ -71,5 +71,10 @@ ordinary path; admission began above that boundary.
 | Candidate-wheel Manager lifecycle and SWE C4/60s | Passed: 21 successful requests, 10 matching compression transactions on both TP ranks, prefix hits, real MTP acceptance, rollback and device release; see [receipt](../evidence/current/2026-09-30-candidate-qualification.json) |
 | Published 0.9.0 installation acceptance | Pending approved package-source availability; local candidate-wheel qualification does not replace it |
 | Exact-head NPU correctness | Functional path passed; task-quality evaluation pending |
+| Current-head method-level NPU benchmark | Recorded on one Ascend device; synthetic algorithm timing only, no serving claim |
 | Exact-head quality/capacity/performance | Pending |
 | Alpha release | Pending quality, capacity, and performance evidence; functional rollback passed |
+
+The method-level benchmark and receipt validator are available in
+[`docs/method-benchmark.md`](method-benchmark.md). They improve reproducibility
+and catch inconsistent evidence, but do not change the pending release gates.

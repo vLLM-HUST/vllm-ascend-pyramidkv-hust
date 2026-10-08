@@ -26,6 +26,8 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+      - name: Validate checked-in qualification receipts
+        run: python tools/validate_evidence.py
       - run: python -m build
       - name: Verify active descriptor contract
         run: |

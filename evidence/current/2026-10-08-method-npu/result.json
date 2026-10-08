@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "scope": "PyramidKV method-level micro-benchmark; not end-to-end serving evidence",
+  "seed": 0,
+  "platform": "Linux-5.15.0-25-generic-aarch64-with-glibc2.38",
+  "python": "3.12.13",
+  "torch": "2.10.0+cpu",
+  "device": "npu:0",
+  "dtype": "bfloat16",
+  "shape": {
+    "tokens": 4097,
+    "query_heads": 16,
+    "kv_heads": 2,
+    "head_dim": 256,
+    "layers": 10,
+    "window_size": 8
+  },
+  "selection": {
+    "retained_tokens_layer_0": 991,
+    "retained_ratio_layer_0": 0.2418843055894557,
+    "selected_indices_sha256": "3105e592a47c0bf96e2dc47e11ba3d1730607c62f49046dfa7856f990f08cd8d"
+  },
+  "timing_ms": {
+    "baseline_full_kv_copy": {
+      "median": 0.11773314327001572,
+      "p95": 0.1420699991285801,
+      "samples": [
+        0.14477409422397614,
+        0.11570192873477936,
+        0.11773314327001572
+      ]
+    },
+    "pyramidkv_selection": {
+      "median": 0.8142087608575821,
+      "p95": 1.0857363231480122,
+      "samples": [
+        1.1159060522913933,
+        0.8142087608575821,
+        0.7658973336219788
+      ]
+    }
+  },
+  "recorded_at_utc": "2026-10-08",
+  "repository_commit": "b0cd3fd73635b97b7c7372219e393e366df7c8d0",
+  "command": "ASCEND_RT_VISIBLE_DEVICES=0 python tools/benchmark_method.py --device npu:0 --dtype bfloat16 --tokens 4097 --query-heads 16 --kv-heads 2 --head-dim 256 --layers 10 --iterations 3 --warmup 1 --seed 0 --output result.json",
+  "tested_files": {
+    "tools/benchmark_method.py": "sha256:75bdcdd8a649f1f0a87f3718eecd97334eca845576acec013e5bd93156fff091",
+    "src/vllm_ascend_pyramidkv/provider.py": "sha256:1ac0dceb22c61fa4786230e84d9a95729c946fd2dd730b72ca7c6bf6608a6876"
+  },
+  "limitations": [
+    "Method-level synthetic tensor benchmark only; it does not start vLLM or measure request serving.",
+    "No quality, capacity, end-to-end latency, throughput, or HBM claim is derived from this result.",
+    "The selected NPU is Ascend device 0 on the recorded host; software and driver identities are not a release qualification."
+  ]
+}
