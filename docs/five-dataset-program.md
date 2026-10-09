@@ -64,7 +64,7 @@ estimate. No speedup, KV reduction or capacity improvement is claimed for MMLU-P
 
 The report contains raw output/archive hashes, a full 12,032-task input inventory and a CPU-only
 verifier that re-scores published outputs and checks SSE correspondence. Its
-[SHA256SUMS](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/b308da7eb2ecad86a9349d0dcc0f4867c197a73a/reports/pyramidkv-five-dataset-adaptation-20261009/SHA256SUMS) SHA-256 is
+[SHA256SUMS](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/b308da7eb2ecad86a9349d0dcc0f4867c197a73a/reports/pyramidkv-five-dataset-adaptation-20261009/SHA256SUMS) SHA-256 is
 `e581f39d0b6f87d39a3833e510074b9539e98c8591b961d70f8d551dd6b1f67b`.
 
 ## Reproduction and review
