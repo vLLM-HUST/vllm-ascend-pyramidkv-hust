@@ -31,6 +31,11 @@ ECPA rejects PyramidKV enablement until `org.vllm-hust.ascend-kvcompress`
 claiming the same PyramidKV method registration. These checks do not select a
 method or prove it runtime-effective.
 
+For the source-built Qwen3.5 serving profile, see the
+[prepared-host runbook](qwen35-serving-smoke.md). That October reproduction used
+direct environment activation and observed a Manager joint-plan conflict on
+`vllm.environment`; enabling both bundles alone does not prove Manager launch.
+
 ## Offline development tests
 
 Use an environment whose PyTorch build already matches the target host:
