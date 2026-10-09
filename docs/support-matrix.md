@@ -2,7 +2,9 @@
 
 This matrix separates the recovered historical profile from the narrowly
 qualified current runtime profile. CPU coverage, a provider-only NPU oracle,
-and exact-stack functional serving evidence are available.
+and exact-stack functional serving evidence are available. The current paired
+evaluation adds bounded quality, capacity, performance, and HBM measurements;
+it does not establish a general performance benefit.
 
 ## Release-validation target
 
@@ -71,6 +73,8 @@ ordinary path; admission began above that boundary.
 | Candidate-wheel Manager lifecycle and SWE C4/60s | Passed: 21 successful requests, 10 matching compression transactions on both TP ranks, prefix hits, real MTP acceptance, rollback and device release; see [receipt](../evidence/current/2026-09-30-candidate-qualification.json) |
 | October source-install Qwen3.5 smoke | Three successful requests; two 5312-to-2048 commits on both TP ranks, APC hit, and MTP acceptance. Direct activation passed; pinned Manager joint launch conflicts on `vllm.environment`. See [runbook](qwen35-serving-smoke.md) |
 | Published 0.9.0 installation acceptance | Pending approved package-source availability; local candidate-wheel qualification does not replace it |
-| Exact-head NPU correctness | Functional path passed; task-quality evaluation pending |
-| Exact-head quality/capacity/performance | Pending |
-| Alpha release | Pending quality, capacity, and performance evidence; functional rollback passed |
+| FULL-graph per-layer cache-write fix | Shared PR #19; evaluated host-compatible source pinned to `19f322130e1b3841da953b1b421bcf3259e9b8dc` |
+| Current-source quality regression | Explicit 1368/beta-2 profile passed separate development and holdout gates; mean F1 losses 0.59/0.26 points. Original 512/beta-20 profile failed development gate |
+| Current-source capacity | Both arms completed 32704 input + 64 output tokens at concurrency 1 and 4; not a maximum-capacity or capacity-improvement claim |
+| Current-source paired performance/HBM | Measurements complete: 8K/24K throughput 2.6%–10.3% lower, peak HBM about 0.4 GiB higher, peak KV-pool usage 29.12% → 21.70%; see [full receipt](../evidence/current/2026-10-09-paired-evaluation/README.md) |
+| Alpha release | Pending quality, capacity, and performance evidence review; measurements available, long-input throughput regression remains, functional rollback passed |

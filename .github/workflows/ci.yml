@@ -21,7 +21,7 @@ jobs:
           python -m pip install \
             "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
           python -m pip install --no-deps \
-            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@a82e08798c10cee8bc0f0468fb0b05def064ae78"
+            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
           python -m pip install -e ".[test]" build
       - run: ruff check .
       - run: ruff format --check .
@@ -68,7 +68,7 @@ jobs:
           .ecpa-smoke/bin/python -m pip install \
             "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
           .ecpa-smoke/bin/python -m pip install --no-deps \
-            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@a82e08798c10cee8bc0f0468fb0b05def064ae78" \
+            "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc" \
             dist/vllm_ascend_pyramidkv_hust-*.whl
           export XDG_CONFIG_HOME="$PWD/.ecpa-state/config"
           export XDG_STATE_HOME="$PWD/.ecpa-state/state"

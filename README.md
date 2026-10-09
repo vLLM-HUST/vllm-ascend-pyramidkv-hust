@@ -4,7 +4,8 @@ Owner-maintained extraction of the PyramidKV provider work preserved in the
 archived vLLM-HUST and vLLM-Ascend-HUST repositories.
 
 **Current status: active external method with an exact-stack functional
-qualification; quality and performance promotion remain pending.**
+qualification and paired evaluation evidence. The explicit 1368/beta-2 profile
+passes the recorded quality gates; performance promotion remains pending.**
 
 The package is discoverable as `org.vllm-hust.ascend-pyramidkv` and publishes
 the `pyramidkv` method through the shared adapter's
@@ -51,12 +52,28 @@ chunked-prefill, and `FULL_AND_PIECEWISE` profile completed a 5007-token
 functional serving request on TP=2 Ascend 910B2 with CANN 9.1; the transaction
 compressed the full-attention KV state to 2048 tokens and completed decode.
 
+Longer task evaluation subsequently exposed a FULL-graph cache-write bug in
+the shared adapter: capture retained common slot addresses while replay updated
+per-layer buffers. The installation below pins the host-compatible fix from
+[shared PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19).
+The [paired evaluation receipt](evidence/current/2026-10-09-paired-evaluation/README.md)
+preserves the initial failure, corrective evaluation, and limits of the result.
+A short HTTP-success smoke alone did not detect this decoding failure.
+
+The corrected 409-request-per-arm run passed separate 150-example development
+and holdout QA-F1 gates (mean losses 0.59 and 0.26 points). Both arms completed
+32K-context requests at concurrency 1 and 4. Compressed long-input throughput
+was 2.6%–10.3% lower, and peak device HBM was about 0.4 GiB higher despite
+lower active KV-pool usage. These results support the stated functional and
+quality scope, not a general speedup or device-memory-saving claim. The original
+512/beta-20 profile did not pass the development quality gate.
+
 ## Inspect and enable
 
 ```bash
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
-python -m pip install --no-deps "vllm-ascend-kvcompress-hust>=0.9,<0.10"
+python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
 python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```
@@ -109,9 +126,10 @@ with `--no-deps` when appropriate.
   `Qwen/Qwen3.5-35B-A3B` (display name: Qwen3.5-35B), BF16, TP=2, APC, MTP=2,
   async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, and
   `mamba_cache_mode=align`.
-- Release promotion still requires current-head quality, capacity, latency,
-  throughput, and HBM evidence. Shared-host merge and Manager rollback gates
-  are complete.
+- Current-source quality, capacity, latency, throughput, and HBM measurements
+  are available for the explicit 1368/beta-2 profile. Release promotion and
+  shared graph-fix review remain pending; the measured long-input throughput
+  regression needs optimization before a positive performance claim.
 
 See:
 
@@ -121,6 +139,8 @@ See:
 - [host contract](docs/host-contract.md)
 - [install and rollback](docs/install-and-rollback.md)
 - [Qwen3.5 source-install serving smoke and runbook](docs/qwen35-serving-smoke.md)
+- [Paired evaluation protocol and reproduction](docs/issue-1-evaluation-protocol.md)
+- [Current paired quality, capacity, performance, and HBM evidence](evidence/current/2026-10-09-paired-evaluation/README.md)
 - [legacy evidence inventory](evidence/legacy/README.md)
 - [public historical Ascend 910B2 result](evidence/legacy/2026-08-13-ascend910b2/README.md)
 - [current provider-only Ascend 910B2 oracle](evidence/current/2026-09-03-provider-npu/README.md)

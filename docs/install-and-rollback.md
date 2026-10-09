@@ -11,7 +11,7 @@ python -m venv .venv-pyramidkv
 source .venv-pyramidkv/bin/activate
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
-python -m pip install --no-deps "vllm-ascend-kvcompress-hust>=0.9,<0.10"
+python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
 python -m pip install --no-deps /path/to/vllm-ascend-pyramidkv-hust
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
@@ -35,6 +35,15 @@ For the source-built Qwen3.5 serving profile, see the
 [prepared-host runbook](qwen35-serving-smoke.md). That October reproduction used
 direct environment activation and observed a Manager joint-plan conflict on
 `vllm.environment`; enabling both bundles alone does not prove Manager launch.
+
+The pinned shared commit includes the FULL-graph per-layer cache-write fix and
+Manifest 0.3 migration on the host-compatible validation branch. Shared
+[PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19) carries
+the runtime fix against its newer default branch. The package version alone
+does not distinguish these revisions. The
+[paired protocol](issue-1-evaluation-protocol.md) reproduces the current
+evaluation with an explicit `pyramidkv-aligned.json` configuration; the original
+512/beta-20 smoke configuration is not interchangeable quality evidence.
 
 ## Offline development tests
 
