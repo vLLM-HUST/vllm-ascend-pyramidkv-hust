@@ -120,6 +120,7 @@ See:
 - [support matrix](docs/support-matrix.md)
 - [host contract](docs/host-contract.md)
 - [install and rollback](docs/install-and-rollback.md)
+- [Qwen3.5 source-install serving smoke and runbook](docs/qwen35-serving-smoke.md)
 - [legacy evidence inventory](evidence/legacy/README.md)
 - [public historical Ascend 910B2 result](evidence/legacy/2026-08-13-ascend910b2/README.md)
 - [current provider-only Ascend 910B2 oracle](evidence/current/2026-09-03-provider-npu/README.md)

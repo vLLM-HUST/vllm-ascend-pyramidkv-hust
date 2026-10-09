@@ -69,6 +69,7 @@ ordinary path; admission began above that boundary.
 | CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Functional serving smoke passed on Ascend 910B2 |
 | TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Functional 5007-token request passed; 5007-to-2048 compression committed on both TP workers |
 | Candidate-wheel Manager lifecycle and SWE C4/60s | Passed: 21 successful requests, 10 matching compression transactions on both TP ranks, prefix hits, real MTP acceptance, rollback and device release; see [receipt](../evidence/current/2026-09-30-candidate-qualification.json) |
+| October source-install Qwen3.5 smoke | Three successful requests; two 5312-to-2048 commits on both TP ranks, APC hit, and MTP acceptance. Direct activation passed; pinned Manager joint launch conflicts on `vllm.environment`. See [runbook](qwen35-serving-smoke.md) |
 | Published 0.9.0 installation acceptance | Pending approved package-source availability; local candidate-wheel qualification does not replace it |
 | Exact-head NPU correctness | Functional path passed; task-quality evaluation pending |
 | Exact-head quality/capacity/performance | Pending |
