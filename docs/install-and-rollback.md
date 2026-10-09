@@ -47,7 +47,9 @@ The pinned shared commit includes the FULL-graph per-layer cache-write fix and
 Manifest 0.3 migration on the host-compatible validation branch. Shared
 [PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19) carries
 the runtime fix against its newer default branch. The package version alone
-does not distinguish these revisions. The
+does not distinguish these revisions. The [public 0.9.0 wheel audit](../evidence/current/2026-10-09-public-package-audit/README.md)
+confirms that the downloadable wheel differs from this qualified source and still lacks the
+graph-slot fix; do not replace the source pin with a version-only dependency. The
 [paired protocol](issue-1-evaluation-protocol.md) reproduces the current
 evaluation with an explicit `pyramidkv-aligned.json` configuration; the original
 512/beta-20 smoke configuration is not interchangeable quality evidence.
