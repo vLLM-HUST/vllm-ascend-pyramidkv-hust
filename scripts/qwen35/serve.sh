@@ -8,7 +8,7 @@ export VLLM_WORKER_MULTIPROC_METHOD=spawn
 # ABI branch selector used by the pinned host, not its installed package version.
 export VLLM_VERSION=0.25.1
 export VLLM_PLUGINS=ascend,ascend_model,ascend_model_loader,ascend_kv_connector,ascend_kvcompress
-export VLLM_ASCEND_KVCOMPRESS_ENABLED=1
+export VLLM_ASCEND_KVCOMPRESS_ENABLED=${PYRAMIDKV_ENABLED:-1}
 export VLLM_ASCEND_KVCOMPRESS_CONFIG="${PYRAMIDKV_CONFIG:-$script_dir/pyramidkv.json}"
 export VLLM_ASCEND_KVCOMPRESS_EXPERIMENTAL_MTP2=1
 export HF_HUB_OFFLINE=1 PYTHONUNBUFFERED=1 PYTHONHASHSEED=0

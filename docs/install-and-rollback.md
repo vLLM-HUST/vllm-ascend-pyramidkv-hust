@@ -36,6 +36,15 @@ For the source-built Qwen3.5 serving profile, see the
 direct environment activation and observed a Manager joint-plan conflict on
 `vllm.environment`; enabling both bundles alone does not prove Manager launch.
 
+The pinned shared commit includes the FULL-graph per-layer cache-write fix and
+Manifest 0.3 migration on the host-compatible validation branch. Shared
+[PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19) carries
+the runtime fix against its newer default branch. The package version alone
+does not distinguish these revisions. The
+[paired protocol](issue-1-evaluation-protocol.md) reproduces the current
+evaluation with an explicit `pyramidkv-aligned.json` configuration; the original
+512/beta-20 smoke configuration is not interchangeable quality evidence.
+
 ## Offline development tests
 
 Use an environment whose PyTorch build already matches the target host:

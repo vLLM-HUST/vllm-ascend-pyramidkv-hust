@@ -114,3 +114,64 @@ performance and capacity cases). The mean-loss <= 3 and task-loss <= 5 gates
 must pass separately on development and holdout; averaging them cannot conceal
 a failed subset. The runtime fix and candidate budget are frozen before this
 paired run. Record all earlier failures, diagnostics and the final result.
+
+## Reproduce the corrective pair
+
+Use the prepared host from the serving runbook, replacing its historical shared
+adapter with commit `19f322130e1b3841da953b1b421bcf3259e9b8dc`. This is the
+host-compatible validation branch for
+[shared PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19),
+including the existing Manifest 0.3 migration. The PR itself targets the newer
+shared default branch. Do not substitute an unpinned adapter or infer support
+for a different host from the `0.9.0` package version alone.
+
+Prepare once and reuse the same plan:
+
+```bash
+python scripts/qwen35/evaluate.py prepare \
+  --model-path "$MODEL_PATH" --longbench-repo /path/to/LongBench \
+  --data /path/to/extracted/data --output /path/to/plan-extended \
+  --samples-per-task 100
+```
+
+In the prepared shell, use an empty output directory and start the disabled
+arm first. `VLLMHUST_EXT_ENABLED_BUNDLES` is cleared because this reproduction
+uses direct shared-adapter activation rather than Manager joint launch.
+
+```bash
+export VLLMHUST_EXT_ENABLED_BUNDLES=
+export PYRAMIDKV_CONFIG="$PWD/scripts/qwen35/pyramidkv-aligned.json"
+export PYRAMIDKV_ENABLED=0
+bash scripts/qwen35/serve.sh > /path/to/pair/baseline-server.log 2>&1 &
+server_pid=$!
+# Wait for /health to return 200 after graph capture, then:
+python scripts/qwen35/evaluate.py run --arm baseline \
+  --plan /path/to/plan-extended --output /path/to/pair/baseline
+kill -TERM "$server_pid"
+wait "$server_pid" || true
+# Verify all old workers exited and their NPU memory was released before reuse.
+npu-smi info
+export PYRAMIDKV_ENABLED=1
+bash scripts/qwen35/serve.sh > /path/to/pair/pyramidkv-server.log 2>&1 &
+server_pid=$!
+# Wait for /health to return 200 again, then:
+python scripts/qwen35/evaluate.py run --arm pyramidkv \
+  --plan /path/to/plan-extended --output /path/to/pair/pyramidkv
+python scripts/qwen35/analyze_evaluation.py \
+  --root /path/to/pair --output /path/to/pair/comparison.json
+```
+
+Require 409 successful requests per arm, matching prompt hashes, verified
+scheduler/TP transactions, and both quality subset gates. The analysis file
+records a failed gate rather than silently excluding its samples. Preserve the
+actual command and selected environment for each process; the
+[published evidence](../evidence/current/2026-10-09-paired-evaluation/README.md)
+includes the original orchestration and launch records for this server.
+
+On this server, inspect `/sys/fs/cgroup/memory.max` and `memory.current` as
+well as `free -h`: the container is limited to 64 GiB even though the host has
+about 2 TiB. One candidate startup failed when model file cache filled that
+limit and the Ascend driver could not allocate pinned host memory. The receipt
+retains that failure and the same-command retry with startup-only, model-file
+`POSIX_FADV_DONTNEED` cache advice. That helper stops before measured requests;
+it neither drops global caches nor changes the model or serving arguments.

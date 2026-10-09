@@ -14,6 +14,12 @@ tested prompt was 5312 tokens. The 2048 physical-token result reflects block
 alignment; it is not a measurement of whole-model HBM savings. Request timings
 include compilation/cache effects and must not be compared as speedup results.
 
+The subsequent [paired evaluation](../evidence/current/2026-10-09-paired-evaluation/README.md)
+retains a graph cache-write failure discovered beyond this short smoke, its
+shared-adapter fix, and a larger quality/capacity/performance comparison. Use
+its adapter revision and explicit method configuration when reproducing that
+evaluation. The revisions and observations below describe the original smoke.
+
 ## Prepared environment
 
 Use an isolated environment inheriting the server's matched PyTorch/torch-npu
@@ -106,9 +112,11 @@ kill -TERM "$server_pid"
 wait "$server_pid"
 ```
 
-The environment activation is process-local. A baseline launch must omit this
-script's compression activation and use the shared adapter's disabled path;
-Manager disablement alone does not undo explicit environment variables.
+The environment activation is process-local. Set `PYRAMIDKV_ENABLED=0` for a
+baseline launch through the shared adapter's disabled path; the default is
+`1`. `PYRAMIDKV_CONFIG` selects a configuration file, with the original
+512/beta-20 smoke profile as the default. Manager disablement alone does not
+undo explicit environment variables.
 
 ## Remaining work
 
@@ -120,6 +128,6 @@ Manager disablement alone does not undo explicit environment variables.
   [dependency check](../evidence/current/2026-10-09-qwen35-serving/dependency-check.txt)
   includes host/API version constraints and unrelated profiler dependencies.
   Successful inference does not imply all optional integrations work.
-- Paired baseline, task quality, long-context capacity, latency, throughput,
-  sustained concurrency, and HBM comparisons remain pending. This receipt does
-  not promote the release or replace the historical qualification.
+- This smoke receipt does not qualify quality, capacity, or comparative
+  performance. The subsequent paired evaluation linked above records those
+  measurements and their limits; release promotion remains a separate review.
