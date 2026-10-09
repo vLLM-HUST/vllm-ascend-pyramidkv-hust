@@ -1,6 +1,6 @@
 # Selected-page materialization diagnostic
 
-This candidate for [issue #1](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues/1)
+This operator-level optimization for [issue #1](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues/1)
 reduces the work needed to materialize PyramidKV selections. Scoring still sees the same full K
 tensor, with the same arithmetic and top-k order. The method resolves each request's page addresses
 once, reads only selected V rows, and reuses the first layer's selected addresses for MTP K/V.
@@ -60,7 +60,9 @@ The report discloses a Harbor constructor check that overlapped the first alread
 selected-2 repeatability control. Formal measured telemetry begins 109.564 seconds after that
 check ended. All controls/warmups were excluded in the frozen plan, and no known competing
 test/lint/audit jobs were sampled during the arms. The scanner is not an exhaustive host-activity
-audit. PR #13 remains an operator-level candidate; a service-performance promotion is unsupported.
+audit. PR #13 is accepted specifically as a local operator optimization, as confirmed by the
+project owner on 2026-10-10 (Asia/Shanghai). This acceptance does not establish serving acceleration,
+HBM reduction, improved maximum capacity or public release readiness.
 
 Reproduce in the qualified isolated runtime, while it is not processing requests:
 
