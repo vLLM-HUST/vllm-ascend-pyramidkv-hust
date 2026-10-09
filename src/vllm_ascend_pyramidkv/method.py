@@ -31,7 +31,6 @@ from vllm_ascend_kvcompress.transaction import CompressionPlan
 
 from vllm_ascend_pyramidkv.provider import (
     PyramidKVAscendConfig,
-    materialize_pyramid_kv,
     select_pyramid_indices,
 )
 
@@ -79,20 +78,44 @@ def _gather_paged_prefix(
     return cache.index_select(0, selected).reshape(-1, cache.shape[2], cache.shape[3])[:num_tokens]
 
 
-def _write_paged_prefix(
-    cache: torch.Tensor,
-    block_ids: torch.Tensor,
-    values: torch.Tensor,
-) -> None:
-    num_tokens = int(values.shape[0])
+def _paged_slots(block_ids: torch.Tensor, num_tokens: int, device: torch.device) -> torch.Tensor:
+    """Resolve a request's logical token positions once, shared by all K/V layers."""
     required = (num_tokens + ASCEND_CACHE_BLOCK_SIZE - 1) // ASCEND_CACHE_BLOCK_SIZE
     if required <= 0 or block_ids.numel() < required:
-        raise RuntimeError("PyramidKV destination block table is too short")
-    positions = torch.arange(num_tokens, device=cache.device, dtype=torch.long)
-    ids = block_ids[:required].to(device=cache.device, dtype=torch.long)
-    slots = ids[positions // ASCEND_CACHE_BLOCK_SIZE] * ASCEND_CACHE_BLOCK_SIZE
-    slots.add_(positions.remainder(ASCEND_CACHE_BLOCK_SIZE))
-    cache.reshape(-1, cache.shape[2], cache.shape[3]).index_copy_(0, slots, values)
+        raise RuntimeError("PyramidKV block table is too short")
+    positions = torch.arange(num_tokens, device=device, dtype=torch.long)
+    ids = block_ids[:required].to(device=device, dtype=torch.long)
+    return ids[positions // ASCEND_CACHE_BLOCK_SIZE] * ASCEND_CACHE_BLOCK_SIZE + positions.remainder(
+        ASCEND_CACHE_BLOCK_SIZE
+    )
+
+
+def _selected_cache_rows(source_slots: torch.Tensor, selected: torch.Tensor, window_size: int) -> torch.Tensor:
+    """Map per-head history and chronological tail to flattened cache rows.
+
+    Preserve the provider's top-k order. Each KV head may choose different
+    history tokens; the final rows are in [retained tokens, KV heads] order.
+    """
+    if selected.ndim != 3 or selected.shape[0] != 1:
+        raise RuntimeError("PyramidKV selection must have [1, KV heads, history tokens]")
+    heads = selected.shape[1]
+    history = source_slots.index_select(0, selected.squeeze(0).transpose(0, 1).reshape(-1))
+    history = history.reshape(-1, heads)
+    tail = source_slots[-window_size:].unsqueeze(1).expand(-1, heads)
+    rows = torch.cat((history, tail), dim=0)
+    if heads == 1:
+        return rows.reshape(-1)
+    return (rows * heads + torch.arange(heads, device=rows.device)).reshape(-1)
+
+
+def _copy_selected_kv(layer: LayerCache, source_rows: torch.Tensor, destination_slots: torch.Tensor) -> None:
+    # Source and destination are private, disjoint pages supplied by the host.
+    # Only K used for scoring is fully gathered; selected V (and MTP K/V) can
+    # be copied directly, without allocating a full prompt-sized V tensor.
+    for cache in (layer.k_cache, layer.v_cache):
+        values = cache.reshape(-1, cache.shape[-1]).index_select(0, source_rows)
+        values = values.reshape(-1, cache.shape[2], cache.shape[3])
+        cache.reshape(-1, cache.shape[2], cache.shape[3]).index_copy_(0, destination_slots, values)
 
 
 class PyramidKVMethod(KVCompressionMethod):
@@ -332,6 +355,9 @@ class PyramidKVMethod(KVCompressionMethod):
 
         per_layer: list[tuple[str, int]] = []
         auxiliary_selection: tuple[torch.Tensor, int] | None = None
+        device = self.layer_caches[0].k_cache.device
+        source_slots = _paged_slots(request.source_block_ids_device, request.physical_num_tokens, device)
+        destination_slots = _paged_slots(request.destination_block_ids_device, self.group_maximum, device)
         participating_layers = len(self.layer_caches)
         for order, layer in enumerate(self.layer_caches):
             key = _gather_paged_prefix(
@@ -339,15 +365,9 @@ class PyramidKVMethod(KVCompressionMethod):
                 request.source_block_ids_device,
                 request.physical_num_tokens,
             )
-            value = _gather_paged_prefix(
-                layer.v_cache,
-                request.source_block_ids_device,
-                request.physical_num_tokens,
-            )
             query = self._query_buffers[completed.slot, self._layer_slots[layer.layer_index]]
             query = query.permute(1, 0, 2).unsqueeze(0)
             paged_key = key.permute(1, 0, 2).unsqueeze(0)
-            paged_value = value.permute(1, 0, 2).unsqueeze(0)
             selected, retained = select_pyramid_indices(
                 query,
                 paged_key,
@@ -357,58 +377,17 @@ class PyramidKVMethod(KVCompressionMethod):
             )
             if selected is None:
                 raise RuntimeError("PyramidKV transaction did not cross admission")
+            rows = _selected_cache_rows(source_slots, selected, self.config.window_size)
             if auxiliary_selection is None:
-                auxiliary_selection = selected, retained
-            compact_key, compact_value = materialize_pyramid_kv(
-                paged_key,
-                paged_value,
-                selected,
-                retained,
-                self.config.window_size,
-            )
-            _write_paged_prefix(
-                layer.k_cache,
-                request.destination_block_ids_device,
-                compact_key.squeeze(0).permute(1, 0, 2).contiguous(),
-            )
-            _write_paged_prefix(
-                layer.v_cache,
-                request.destination_block_ids_device,
-                compact_value.squeeze(0).permute(1, 0, 2).contiguous(),
-            )
+                auxiliary_selection = rows, retained
+            _copy_selected_kv(layer, rows, destination_slots[:retained])
             per_layer.append((layer.name, retained))
         if self.auxiliary_mtp_caches:
             if auxiliary_selection is None:
                 raise RuntimeError("PyramidKV has no target selection for MTP cache")
-            selected, retained = auxiliary_selection
+            rows, retained = auxiliary_selection
             for layer in self.auxiliary_mtp_caches:
-                key = _gather_paged_prefix(
-                    layer.k_cache,
-                    request.source_block_ids_device,
-                    request.physical_num_tokens,
-                )
-                value = _gather_paged_prefix(
-                    layer.v_cache,
-                    request.source_block_ids_device,
-                    request.physical_num_tokens,
-                )
-                compact_key, compact_value = materialize_pyramid_kv(
-                    key.permute(1, 0, 2).unsqueeze(0),
-                    value.permute(1, 0, 2).unsqueeze(0),
-                    selected,
-                    retained,
-                    self.config.window_size,
-                )
-                _write_paged_prefix(
-                    layer.k_cache,
-                    request.destination_block_ids_device,
-                    compact_key.squeeze(0).permute(1, 0, 2).contiguous(),
-                )
-                _write_paged_prefix(
-                    layer.v_cache,
-                    request.destination_block_ids_device,
-                    compact_value.squeeze(0).permute(1, 0, 2).contiguous(),
-                )
+                _copy_selected_kv(layer, rows, destination_slots[:retained])
                 per_layer.append((layer.name, retained))
         return CompressionResult(
             physical_num_tokens=self.group_maximum,

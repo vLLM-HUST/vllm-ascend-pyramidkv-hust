@@ -1,6 +1,6 @@
 # Selected-page serving result and acceptance boundary
 
-[PR #13](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/pull/13) is a candidate that avoids
+[PR #13](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/pull/13) is an operator optimization that avoids
 full V gathers and reuses page mappings. Its approximately 36% isolated operator latency reduction
 does not translate into a demonstrated service throughput improvement.
 
@@ -26,7 +26,9 @@ starts 109.564 seconds after the check ends. The final server's later Harbor API
 outside the performance plan. Historical compression-off/on throughput regressions remain
 unchanged, and there is no new official leaderboard or HBM-reduction claim.
 
-PR #13 remains a draft operator-level candidate. Whether an operator-only improvement is sufficient
-for acceptance is separate from a service-performance promotion; this result does not support the
-latter. The qualified source installation continues to run, while a corrected public shared-adapter
-artifact and its release-specific acceptance remain outstanding.
+On 2026-10-10 (Asia/Shanghai), the project owner explicitly accepted PR #13 on the basis of its
+local operator improvement, with no claim of serving acceleration. The acceptance covers the
+selected-page copying and shared slot mappings supported by the isolated operator measurements
+and correctness checks. It does not promote service throughput, HBM usage, maximum capacity or
+release readiness. The original negative off/on B0/B1 results remain unchanged. A corrected public
+shared-adapter artifact and its release-specific acceptance remain outstanding.
