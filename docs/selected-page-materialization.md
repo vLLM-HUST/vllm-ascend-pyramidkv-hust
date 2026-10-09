@@ -39,9 +39,28 @@ methods, restoring private destination pages between them. This narrows the mate
 investigation; it does not prove cross-process generation determinism.
 
 [Serving and real-cache diagnostic evidence](../evidence/current/2026-10-09-selected-page-serving)
-includes raw SSE, failures, worker hashes and the diagnostic overlay. A dedicated fresh-process ABBA
-performance series is being collected without overlapping local test/audit work. These diagnostics
-do **not** supersede the earlier measured throughput regressions.
+includes raw SSE, failures, worker hashes and the diagnostic overlay. The dedicated fresh-process
+ABBA series is now complete: 548 requests succeeded, 372 compression transactions paired with both
+TP workers, and all SSE/usage/input hashes were verified. The canonical
+[benchmark report and raw archive](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/a2684c3701237c0b5a8cb6e73d25ce305d6f0e71/reports/pyramidkv-selected-page-abba-20261009)
+preserve all four processes, six measured cells and resource observations.
+
+**No serving acceleration was observed.** Pooled throughput changes for 8K/C1, 8K/C4, 24K/C1 and
+24K/C4 are -0.24%, -0.45%, -0.45% and -0.25%; HBM peaks are essentially unchanged. Only two processes
+per implementation were measured, so these small changes do not establish a general regression
+or benefit. The approximately 36% isolated operator reduction cannot be promoted as end-to-end
+acceleration. These observations do **not** supersede the earlier compression-off/on regressions.
+
+Same-implementation fresh-process pairs have 35 and 34 synthetic output differences; cross-method
+pairs have 41 and 28. All 20 disputed-C1 repeatability controls have one identical output hash.
+Cross-process text differences alone therefore do not identify a selected-page copy defect, while
+the underlying generation variability is not proven. No mismatches are discarded.
+
+The report discloses a Harbor constructor check that overlapped the first already-excluded
+selected-2 repeatability control. Formal measured telemetry begins 109.564 seconds after that
+check ended. All controls/warmups were excluded in the frozen plan, and no known competing
+test/lint/audit jobs were sampled during the arms. The scanner is not an exhaustive host-activity
+audit. PR #13 remains an operator-level candidate; a service-performance promotion is unsupported.
 
 Reproduce in the qualified isolated runtime, while it is not processing requests:
 
