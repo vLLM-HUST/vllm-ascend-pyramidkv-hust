@@ -45,10 +45,15 @@ with zipfile.ZipFile(wheel) as archive:
     for name in archive.namelist():
         if not name.endswith(".py"):
             continue
-        source = subprocess.check_output([
-            "git", "-C", "/path/to/shared-repository", "show",
-            receipt["qualified_source_revision"] + ":src/" + name,
-        ])
+        source = subprocess.check_output(
+            [
+                "git",
+                "-C",
+                "/path/to/shared-repository",
+                "show",
+                receipt["qualified_source_revision"] + ":src/" + name,
+            ]
+        )
         print(name, hashlib.sha256(archive.read(name)).hexdigest(), hashlib.sha256(source).hexdigest())
 ```
 
