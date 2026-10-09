@@ -20,6 +20,15 @@ The release-validation model is **Qwen3.5-35B**, using the official model ID
 grouped-GQA device oracle as historical provider-only evidence; that result is
 not a substitute for Qwen3.5 serving validation.
 
+## Five-primary-dataset program
+
+The [issue #8 applicability matrix](docs/five-dataset-program.md) records the five primary datasets and
+links the canonical benchmark adapter/evidence in
+[benchmark PR #258](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/258). MMLU-Pro is
+`not-exercised` under the frozen five-shot profile: all test prompts fall below the 4,096-token
+compression gate. The other four datasets have explicit rights/scorer/sandbox blockers. The named
+70-task B0/B1 subset is a compatibility check, with no optimization claim.
+
 ## Host ownership and current interface gap
 
 The former host-side Drafts in `vllm-hust` and `vllm-ascend-hust` were
