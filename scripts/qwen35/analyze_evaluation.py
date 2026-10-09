@@ -61,7 +61,8 @@ def transactions(log: str, results: list[dict], enabled: bool) -> dict:
             continue
         identity = re.escape(result["request_id"])
         matches = re.findall(
-            rf"scheduler commit request_id=({identity}(?:-[a-zA-Z0-9]+)?) "
+            # Completions add prompt index 0 before the engine's hex suffix.
+            rf"scheduler commit request_id=({identity}(?:-0)?(?:-[a-fA-F0-9]{{8}})?) "
             rf"semantic_tokens=(\d+) physical_tokens=(\d+) source_blocks=(\d+) "
             rf"destination_blocks=(\d+) released_blocks=(\d+)",
             log,
@@ -97,6 +98,37 @@ def transactions(log: str, results: list[dict], enabled: bool) -> dict:
     return {"verified": not errors, "errors": errors, "transactions": rows}
 
 
+def quality_summary(by_id: dict[str, dict[str, dict]]) -> dict:
+    quality_ids = [key for key, row in by_id["baseline"].items() if row["kind"] == "quality"]
+
+    def compare(keys: list[str]) -> dict:
+        tasks = sorted({by_id["baseline"][key]["task"] for key in keys})
+        scores = {
+            arm: {
+                task: 100 * statistics.mean(rows[key]["qa_f1"] for key in keys if rows[key]["task"] == task)
+                for task in tasks
+            }
+            for arm, rows in by_id.items()
+        }
+        drops = {task: scores["baseline"][task] - scores["pyramidkv"][task] for task in tasks}
+        return {
+            "scores": scores,
+            "baseline_minus_pyramidkv_f1_points": drops,
+            "mean_drop_points": statistics.mean(drops.values()),
+            "gate_passed": statistics.mean(drops.values()) <= 3 and max(drops.values()) <= 5,
+            "samples_per_task": {task: sum(by_id["baseline"][key]["task"] == task for key in keys) for task in tasks},
+        }
+
+    result = compare(quality_ids)
+    subsets = sorted({by_id["baseline"][key].get("subset", "development") for key in quality_ids})
+    result["subsets"] = {
+        subset: compare([key for key in quality_ids if by_id["baseline"][key].get("subset", "development") == subset])
+        for subset in subsets
+    }
+    result["gate_passed"] = result["gate_passed"] and all(x["gate_passed"] for x in result["subsets"].values())
+    return result
+
+
 def analyze(root: Path, output: Path) -> None:
     arms = {}
     by_id = {}
@@ -106,8 +138,19 @@ def analyze(root: Path, output: Path) -> None:
         by_id[name] = {x["case_id"]: x for x in results}
         groups = json.loads((path / "groups.json").read_text())
         summary = json.loads((path / "summary.json").read_text())
+        counters = {}
+        for counter in ("num_preemptions", "spec_decode_num_draft_tokens", "spec_decode_num_accepted_tokens"):
+            values = []
+            for stage in ("before", "after"):
+                text = (path / f"metrics-{stage}.txt").read_text()
+                matches = re.findall(rf"^vllm:{counter}_total\{{[^\n]*\}} ([\d.eE+-]+)$", text, re.MULTILINE)
+                if not matches:
+                    raise ValueError(f"Missing {counter} metric in {name}/{stage}")
+                values.append(sum(map(float, matches)))
+            counters[counter] = values[1] - values[0]
         arms[name] = {
             "summary": summary,
+            "counter_deltas": counters,
             "resources": resources(path / "telemetry.jsonl"),
             "compression": transactions((root / f"{name}-server.log").read_text(), results, name == "pyramidkv"),
             "performance": {},
@@ -145,15 +188,7 @@ def analyze(root: Path, output: Path) -> None:
         enabled = by_id["pyramidkv"][key]
         if any(baseline[field] != enabled[field] for field in ("prompt_sha256", "max_tokens", "ignore_eos")):
             raise ValueError(f"Mismatched paired inputs: {key}")
-    scores = {name: arm["summary"]["quality_f1"] for name, arm in arms.items()}
-    drops = {task: scores["baseline"][task] - scores["pyramidkv"][task] for task in scores["baseline"]}
-    quality = {
-        "scores": scores,
-        "baseline_minus_pyramidkv_f1_points": drops,
-        "mean_drop_points": statistics.mean(drops.values()),
-        "gate_passed": statistics.mean(drops.values()) <= 3 and max(drops.values()) <= 5,
-        "sample_count_per_task": 50,
-    }
+    quality = quality_summary(by_id)
     ratios = {}
     for key, baseline in arms["baseline"]["performance"].items():
         enabled = arms["pyramidkv"]["performance"][key]
@@ -168,7 +203,7 @@ def analyze(root: Path, output: Path) -> None:
                 enabled[metric]["mean"] / baseline[metric]["mean"] - 1
             ) * 100
     evidence = {
-        "scope": "Fixed 150-example QA regression and 32K-context deployment, not full benchmark or maximum capacity",
+        "scope": "Fixed QA regression subset and 32K-context deployment, not full benchmark or maximum capacity",
         "quality": quality,
         "arms": arms,
         "performance_relative_changes": ratios,

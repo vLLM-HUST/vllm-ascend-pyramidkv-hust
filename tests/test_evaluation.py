@@ -79,6 +79,8 @@ def test_paired_transactions_enforce_admission_and_both_workers() -> None:
         )
     check = ANALYZE["transactions"]
     assert check(log, requests, True)["verified"]
+    assert check(log.replace("cmpl-a-deadbeef", "cmpl-a-0-deadbeef"), requests, True)["verified"]
+    assert not check(log.replace("cmpl-a-deadbeef", "cmpl-a-1-deadbeef"), requests, True)["verified"]
     assert not check(log, requests, False)["verified"]
     assert not check(log.replace("Worker_TP1", "Worker_TP2"), requests, True)["verified"]
     assert not check("", requests, True)["verified"]
@@ -98,3 +100,18 @@ def test_resource_parser_keeps_device_hbm_separate_from_cache(tmp_path: Path) ->
     result = ANALYZE["resources"](telemetry)
     assert result["peak_kv_usage_fraction"] == 0.5
     assert result["device_hbm_mib"] == {"6": {"minimum": 47000, "peak": 47000}}
+
+
+def test_quality_gate_cannot_hide_holdout_loss_with_development_gain() -> None:
+    arms = {"baseline": {}, "pyramidkv": {}}
+    for task in ("narrativeqa", "qasper", "2wikimqa"):
+        for subset, enabled_score in (("development", 0.8), ("holdout", 0.44)):
+            key = f"{task}-{subset}"
+            row = {"kind": "quality", "task": task, "subset": subset, "qa_f1": 0.5}
+            arms["baseline"][key] = row
+            arms["pyramidkv"][key] = dict(row, qa_f1=enabled_score)
+    result = ANALYZE["quality_summary"](arms)
+    assert result["mean_drop_points"] < 0
+    assert result["subsets"]["development"]["gate_passed"]
+    assert not result["subsets"]["holdout"]["gate_passed"]
+    assert not result["gate_passed"]

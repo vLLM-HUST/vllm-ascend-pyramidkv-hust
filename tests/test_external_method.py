@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -91,6 +93,19 @@ def _bound_method() -> tuple[PyramidKVMethod, tuple[LayerCache, ...]]:
     )
     method.bind_model_runner(SimpleNamespace(max_num_reqs=2, device=torch.device("cpu")), caches)
     return method, caches
+
+
+def test_aligned_qwen_budget_fits_one_physical_block_with_nonuniform_layers() -> None:
+    path = Path(__file__).parents[1] / "scripts/qwen35/pyramidkv-aligned.json"
+    options = json.loads(path.read_text())["method_config"]
+    method = PyramidKVMethod(options, _config(), _small_shape())
+    lengths = [method.config.retained_tokens(32704, layer_index=layer, num_hidden_layers=10) for layer in range(10)]
+    assert method.runtime_spec.max_physical_num_tokens == 2048
+    assert method.runtime_spec.compression_threshold_tokens == 4097
+    assert lengths == sorted(lengths, reverse=True)
+    assert len(set(lengths)) == 10
+    assert max(lengths) == 2048
+    assert min(lengths) >= 680
 
 
 def test_factory_exposes_block_aligned_runtime_contract() -> None:

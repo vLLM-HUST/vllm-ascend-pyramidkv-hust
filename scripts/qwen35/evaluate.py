@@ -57,9 +57,9 @@ def prepare(args: argparse.Namespace) -> None:
     for task in TASKS:
         path = args.data / f"{task}.jsonl"
         inputs[task] = digest(path.read_bytes())
-        rows = [json.loads(line) for line in path.read_text().splitlines()][:50]
-        if len(rows) != 50:
-            raise ValueError(f"Expected 50 examples for {task}")
+        rows = [json.loads(line) for line in path.read_text().splitlines()][: args.samples_per_task]
+        if len(rows) != args.samples_per_task:
+            raise ValueError(f"Expected {args.samples_per_task} examples for {task}")
         for index, row in enumerate(rows):
             content = templates[task].format(**row)
             ids = tokenizer.encode(content, add_special_tokens=False)
@@ -81,6 +81,7 @@ def prepare(args: argparse.Namespace) -> None:
                     "kind": "quality",
                     "task": task,
                     "dataset_id": row.get("_id"),
+                    "subset": "development" if index < 50 else "holdout",
                     "answers": row["answers"],
                     "original_instruction_tokens": original_length,
                     "truncated": original_length > 16200,
@@ -143,12 +144,12 @@ def prepare(args: argparse.Namespace) -> None:
             "template_sha256": digest((config / "dataset2prompt.json").read_bytes()),
             "cases_sha256": digest((args.output / "cases.json").read_bytes()),
             "groups_sha256": digest((args.output / "groups.json").read_bytes()),
-            "quality_selection": "first 50 examples per task, before observing outputs",
+            "quality_selection": f"first {args.samples_per_task} examples per task; indices >= 50 are holdout",
             "quality_tasks": TASKS,
             "quality_gate": {"maximum_mean_f1_drop_points": 3, "maximum_task_f1_drop_points": 5},
             "generation": {"temperature": 0, "seed": 17, "thinking": False},
             "max_prompt_tokens": 16384,
-            "quality_count": 150,
+            "quality_count": len(TASKS) * args.samples_per_task,
             "total_cases": len(cases),
         },
     )
@@ -305,14 +306,15 @@ def run(args: argparse.Namespace) -> None:
             if len(good) != len(results):
                 raise RuntimeError(f"Failed requests in {group['name']}; inspect retained evidence")
         if not args.skip_quality:
-            for index, case in enumerate(x for x in cases if x["kind"] == "quality"):
+            quality_cases = [x for x in cases if x["kind"] == "quality"]
+            for index, case in enumerate(quality_cases):
                 phase["name"] = f"quality-{case['task']}"
                 result = stream_request(args.base_url, case, raw)
                 all_results.append(result)
                 if not result["success"]:
                     raise RuntimeError(f"Failed quality request {case['case_id']}")
                 if (index + 1) % 10 == 0:
-                    print(f"{args.arm}: quality {index + 1}/150", flush=True)
+                    print(f"{args.arm}: quality {index + 1}/{len(quality_cases)}", flush=True)
     finally:
         stop.set()
         thread.join(timeout=15)
@@ -342,6 +344,7 @@ if __name__ == "__main__":
     prep.add_argument("--longbench-repo", type=Path, required=True)
     prep.add_argument("--data", type=Path, required=True)
     prep.add_argument("--output", type=Path, required=True)
+    prep.add_argument("--samples-per-task", type=int, choices=(50, 100), default=50)
     runner = sub.add_parser("run")
     runner.add_argument("--plan", type=Path, required=True)
     runner.add_argument("--output", type=Path, required=True)

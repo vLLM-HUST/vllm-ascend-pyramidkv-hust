@@ -88,3 +88,29 @@ python scripts/qwen35/evaluate.py run --arm pyramidkv \
 Output directories must be new. Preserve the plan, raw request/SSE results,
 metrics, telemetry and each server log together. Source and evidence hashes
 identify the actual evaluated implementation independently of later docs edits.
+
+## Corrective evaluation after the initial failure
+
+The initial 150-example run exposed corrupted post-compression decoding under
+FULL graph replay. Its HTTP success and committed transactions were insufficient
+to establish correctness. Preserve that failed run separately. The shared
+adapter fix binds the preallocated per-layer cache-write slot buffers during
+synthetic graph capture and invalidates padded slots before subsequent replay.
+Development diagnostics must not be counted as the final paired measurement.
+
+After that fix, the original 512/beta-20 profile still exceeded the qasper
+development loss threshold. The next candidate is fixed before inspecting the
+holdout outputs: `max_capacity_prompt=1368`, `beta=2`, other method settings
+unchanged. Its maximum retained length is exactly
+`2 * (1368 - 8) - (1368 - 8) // 2 + 8 = 2048`, so it uses the same physical
+allocation bound while retaining more keys in the deeper full-attention layers.
+No provider algorithm or model weights are changed for this budget experiment.
+
+Prepare with `--samples-per-task 100`. The original indices 0–49 are the
+development regression set; indices 50–99 of each task are the new holdout.
+Use fresh baseline and candidate server lifecycles, in that order, and the same
+409-case plan (300 quality cases plus the unchanged 109 warmup, boundary,
+performance and capacity cases). The mean-loss <= 3 and task-loss <= 5 gates
+must pass separately on development and holdout; averaging them cannot conceal
+a failed subset. The runtime fix and candidate budget are frozen before this
+paired run. Record all earlier failures, diagnostics and the final result.

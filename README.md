@@ -56,7 +56,7 @@ compressed the full-attention KV state to 2048 tokens and completed decode.
 ```bash
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
-python -m pip install --no-deps "vllm-ascend-kvcompress-hust>=0.9,<0.10"
+python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
 python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
 ```
