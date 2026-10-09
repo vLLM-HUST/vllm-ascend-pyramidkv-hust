@@ -16,7 +16,7 @@ second scorer or relabel existing LongBench results as primary-dataset evidence.
 | HLE-Verified | `blocked` | All 2,500 source rows and image modalities are audited. Complete canonical rights review; select full vs Gold and freeze judge/scorer and image-aware execution. Gold includes 93 image tasks out of 668. |
 | SWE-bench-Pro | `blocked` | All 642 V2 tasks map to pinned repository/harness files and digest-verified AMD64 images. Complete task rights review; provide fresh AMD64 sandboxes and freeze agent, tools, budgets and regrader. |
 | FrontierScience | `blocked` | Both input manifests and candidate solver/grader code are available. The prompts do not cross the prefill threshold. Provide a fixed judge and actual semantic calibration before solver generation; keep the two track scores separate. |
-| Terminal-Bench 2.1 | `blocked` | All 89 tasks, 1,101 source files and AMD64 image digests are audited. Provide a Harbor-compatible fresh-sandbox backend and model connectivity; complete task rights and scaffold/tool/budget/verifier contracts. |
+| Terminal-Bench 2.1 | `blocked` | All 89 tasks and image digests are audited; reproducible Harbor 0.24.0 / Terminus-2 candidate jobs and local model transport pass. Provide an AMD64 fresh-sandbox backend and remote model connectivity; validate verifier semantics and complete task rights/canonical contract review. |
 
 @Irisuko is the MOD integration owner named by #8. Benchmark #254 maintainers coordinate the canonical
 rights/scorer/runtime contracts; these are coordination roles, not a statement of maintainer approval.
@@ -24,7 +24,9 @@ The original machine-readable matrix remains an immutable historical receipt; th
 reports below record completed audits and remaining conditions. This ARM64 pod has no usable
 Docker/Podman socket or Harbor backend. The required source files and image metadata were
 independently retrieved and verified here; source availability no longer blocks these audits.
-AMD64 sandbox execution and model connectivity remain external requirements.
+Harbor 0.24.0 is installed in a separate local ARM64 validation environment, and its client can
+reach this pod's model API. AMD64 sandbox execution and connectivity from the future backend remain
+external requirements.
 
 ## Evidence boundary
 
@@ -125,3 +127,29 @@ skips and final tests/lint CI. These are source-integrity results, not Harbor ta
 The reports preserve source revisions, inventories, retrieval receipts, failure records and
 checksums. Their rights, judge, sandbox and execution-contract gates remain open. No official
 leaderboard, website readiness or compression-gain claim is promoted by these follow-ups.
+
+
+## Terminal-Bench candidate execution and local transport
+
+[Benchmark PR #263](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/263) supplies the
+[immutable candidate plan and receipts](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/c021463b9094ba8423f379d4fce4e71f5e7a7cb0/reports/pyramidkv-terminal-harbor-contract-20261009).
+The preparer rechecks the frozen inventory, pins image tags to audited AMD64 digests and restores
+1,035 task files' Git modes. Two preparations are byte-identical. Both Harbor job/agent schemas and
+the real constructor pass; 1,837 repository tests pass with four skips. This preparation makes zero
+model calls and executes zero tasks.
+
+The proposed Terminus-2 policy is one trial per task, concurrency one, 100 turns, 32K context and
+4K output tokens per call, preserving task-specific resources and timeouts. Upstream nested LLM
+retry decorators remain and are explicitly recorded. Job files do not toggle server compression;
+actual B0/B1 activation must be separately verified.
+
+A [separate local transport diagnostic](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/fbcafea8bab85a692e4168945cb95d38c256f894/reports/pyramidkv-harbor-local-transport-20261009)
+then made one real API query through Terminus-2 and passed its JSON parser (55 input / 23 output
+tokens). It ran after the dedicated performance series, without a sandbox, command or verifier.
+The synthetic JSON's completion flag is not a task score. The server remained compression-enabled;
+the input job's B0 filename did not switch it, and the short prompt did not exercise compression.
+
+Local client compatibility is now verified. Remote backend connectivity, AMD64 execution-image
+identity, enforced resource limits, fresh-sandbox verifier/reference/failure checks and canonical
+rights/contract review remain open. Neither report supplies a task-resolution score or promotes
+five-dataset optimization readiness.
