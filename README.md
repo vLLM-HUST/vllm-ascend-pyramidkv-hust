@@ -26,7 +26,9 @@ The [issue #8 applicability matrix](docs/five-dataset-program.md) records the fi
 links the canonical benchmark adapter/evidence in
 [benchmark PR #258](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/258). MMLU-Pro is
 `not-exercised` under the frozen five-shot profile: all test prompts fall below the 4,096-token
-compression gate. The other four datasets have explicit rights/scorer/sandbox blockers. The named
+compression gate. FrontierScience now has candidate solver/grader code; HLE, SWE and Terminal-Bench have
+complete source audits, with SWE/Terminal image digests verified. Their remaining judge, rights,
+multimodal and sandbox requirements are recorded in the matrix. The named
 70-task B0/B1 subset scores 55/70 (78.57%) in both arms with identical outputs: a compatibility
 check, with no optimization claim.
 
@@ -82,7 +84,7 @@ quality scope, not a general speedup or device-memory-saving claim. The original
 
 ```bash
 python -m pip install \
-  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
+  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"
 python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
 python -m pip install --no-deps .
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
@@ -149,6 +151,7 @@ See:
 - [host contract](docs/host-contract.md)
 - [install and rollback](docs/install-and-rollback.md)
 - [Qwen3.5 source-install serving smoke and runbook](docs/qwen35-serving-smoke.md)
+- [Current Qwen3.5 joint Manager launch](docs/qwen35-managed-launch.md)
 - [Paired evaluation protocol and reproduction](docs/issue-1-evaluation-protocol.md)
 - [Current paired quality, capacity, performance, and HBM evidence](evidence/current/2026-10-09-paired-evaluation/README.md)
 - [legacy evidence inventory](evidence/legacy/README.md)

@@ -6,8 +6,12 @@ method. The exact serving profile is documented in the support matrix.
 
 ## Clean installation
 
+On the prepared Ascend host, inherit its matched Torch/torch-npu packages into the
+isolated environment. These commands do not provision CANN or the qualified core/Ascend
+source stack; prepare those using the linked serving runbook first.
+
 ```bash
-python -m venv .venv-pyramidkv
+python -m venv --system-site-packages .venv-pyramidkv
 source .venv-pyramidkv/bin/activate
 python -m pip install \
   "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"

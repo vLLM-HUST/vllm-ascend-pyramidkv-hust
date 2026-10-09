@@ -13,16 +13,18 @@ second scorer or relabel existing LongBench results as primary-dataset evidence.
 | Dataset | PyramidKV status | Reason and next step |
 | --- | --- | --- |
 | MMLU-Pro | `not-exercised` | All 12,032 frozen test prompts are 898–2,910 tokens with the fixed five-shot Qwen template, below the >4,096-token prefill compression threshold. The 70-task B0/B1 subset checks task-quality compatibility only. Review the named contract; full-test accuracy remains unmeasured. |
-| HLE-Verified | `blocked` | Complete canonical rights review; select full vs Gold and freeze task IDs, judge model/prompts, scorer, image handling and runtime. |
-| SWE-bench-Pro | `blocked` | Complete rights review and task/repository/image mapping; provision fresh isolated sandboxes and freeze agent, tools, budget and regrader. |
-| FrontierScience | `blocked` | Both input manifests are frozen; the candidate prompts do not cross the prefill threshold. Freeze distinct judge/scorer and execution contracts; do not combine the scores. |
-| Terminal-Bench 2.1 | `blocked` | Provision a Harbor-compatible sandbox backend and freeze image digests, task rights, scaffold, tools, budgets and scorer for the 2.1 release. |
+| HLE-Verified | `blocked` | All 2,500 source rows and image modalities are audited. Complete canonical rights review; select full vs Gold and freeze judge/scorer and image-aware execution. Gold includes 93 image tasks out of 668. |
+| SWE-bench-Pro | `blocked` | All 642 V2 tasks map to pinned repository/harness files and digest-verified AMD64 images. Complete task rights review; provide fresh AMD64 sandboxes and freeze agent, tools, budgets and regrader. |
+| FrontierScience | `blocked` | Both input manifests and candidate solver/grader code are available. The prompts do not cross the prefill threshold. Provide a fixed judge and actual semantic calibration before solver generation; keep the two track scores separate. |
+| Terminal-Bench 2.1 | `blocked` | All 89 tasks, 1,101 source files and AMD64 image digests are audited. Provide a Harbor-compatible fresh-sandbox backend and model connectivity; complete task rights and scaffold/tool/budget/verifier contracts. |
 
 @Irisuko is the MOD integration owner named by #8. Benchmark #254 maintainers coordinate the canonical
 rights/scorer/runtime contracts; these are coordination roles, not a statement of maintainer approval.
-The full machine-readable matrix records exact source revisions and unblock conditions. The current
-PyramidKV pod has no Docker executable/socket or Harbor executable, and does not mount the canonical
-five-dataset source bundle. Exact MMLU-Pro files were separately downloaded and hash-verified here.
+The original machine-readable matrix remains an immutable historical receipt; the newer linked
+reports below record completed audits and remaining conditions. This ARM64 pod has no usable
+Docker/Podman socket or Harbor backend. The required source files and image metadata were
+independently retrieved and verified here; source availability no longer blocks these audits.
+AMD64 sandbox execution and model connectivity remain external requirements.
 
 ## Evidence boundary
 
@@ -87,7 +89,39 @@ of 94–835 tokens and 60 Research prompts of 164–1,660 tokens; none crosses 4
 Research has only 59 unique group IDs, so track/source-row IDs preserve all 60 tasks.
 The source reference answers/rubrics are kept outside solver prompts.
 
-This is an input audit with no solver or judge calls, not a new task score. The
-two track graders, judge revision/prompt/parser/calibration, runtime image,
-trials and budgets remain unfrozen. The report retains `blocked` status and does
-not promote global dataset readiness or claim compression gains.
+That original report is an input audit with no solver or judge calls. The subsequent
+[benchmark PR #260](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/260) adds
+[candidate solver and separate grading contracts](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/aec97b98e0b82d375fd4d113ed5f8dfc47eeefed/reports/pyramidkv-frontierscience-protocol-20261009).
+Olympiad uses reference equivalence; Research uses rubric scores and its own passing threshold.
+Judge identity, instructions and a checksum-bound semantic calibration receipt must be fixed before
+any solver generation. Failed solver attempts remain in the denominator, while missing or failed
+judge grading leaves the track score unavailable. The code and synthetic tests do not provide an
+actual judge or establish semantic calibration. No real solver/judge scores have been collected.
+
+## HLE, SWE and Terminal-Bench source follow-up
+
+Merged [benchmark PR #261](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/261) adds
+[HLE source and modality evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/d48542eb97ba8c812db508d1421dd8ffc2fd7717/reports/pyramidkv-hle-source-audit-20261009)
+and [SWE task/image provenance](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/d48542eb97ba8c812db508d1421dd8ffc2fd7717/reports/pyramidkv-swe-source-audit-20261009).
+HLE preserves all 2,500 unique source rows, original answer types and image-task membership.
+The text-only Gold subset has 575 tasks and must not be presented as the complete 668-task Gold set.
+The current serving configuration disables image input, so a full score requires a separate
+image-aware execution contract as well as rights and scorer review.
+
+All 642 SWE V2 task IDs match the frozen harness, base commits and AMD64 image metadata. One Ansible
+test patch differs between the dataset and harness only in CRLF sequences; verifier execution must
+retain the pinned harness bytes because fixture line endings can be semantic. Root-license
+provenance is not blanket clearance of task content. No image layers were downloaded and no task sandboxes were run.
+
+Merged [benchmark PR #262](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/262) adds
+[Terminal-Bench 2.1 audit and retrieval evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/508d95298b2cdff53b4c879979b2cd12dff27cdc/reports/pyramidkv-terminal-source-audit-20261009).
+All 89 tasks and 1,101 source files match the pinned Git tree; all image manifests/configurations
+are digest-verified and AMD64. The resumable fetcher retrieves source files and image metadata by
+frozen identity, without pulling image layers or executing task code. All tasks preserve their own
+resource/time limits and network policy. Two complete audits are byte-identical. Cached retrieval
+of 89 images and a fresh public retrieval of one task passed, as did 1,822 repository tests with four
+skips and final tests/lint CI. These are source-integrity results, not Harbor task resolution scores.
+
+The reports preserve source revisions, inventories, retrieval receipts, failure records and
+checksums. Their rights, judge, sandbox and execution-contract gates remain open. No official
+leaderboard, website readiness or compression-gain claim is promoted by these follow-ups.
