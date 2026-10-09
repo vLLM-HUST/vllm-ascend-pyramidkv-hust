@@ -3,7 +3,7 @@
 Tracking: [PyramidKV #8](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues/8),
 [benchmark #254](https://github.com/vLLM-HUST/vllm-hust-benchmark/issues/254).
 
-The canonical implementation and evidence are submitted in
+The canonical implementation and evidence were merged in
 [benchmark PR #258](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/258). This repository uses that
 runner with the pinned transport and compression analyzer in `scripts/qwen35/`; it does not maintain a
 second scorer or relabel existing LongBench results as primary-dataset evidence.
@@ -15,7 +15,7 @@ second scorer or relabel existing LongBench results as primary-dataset evidence.
 | MMLU-Pro | `not-exercised` | All 12,032 frozen test prompts are 898–2,910 tokens with the fixed five-shot Qwen template, below the >4,096-token prefill compression threshold. The 70-task B0/B1 subset checks task-quality compatibility only. Review the named contract; full-test accuracy remains unmeasured. |
 | HLE-Verified | `blocked` | Complete canonical rights review; select full vs Gold and freeze task IDs, judge model/prompts, scorer, image handling and runtime. |
 | SWE-bench-Pro | `blocked` | Complete rights review and task/repository/image mapping; provision fresh isolated sandboxes and freeze agent, tools, budget and regrader. |
-| FrontierScience | `blocked` | Freeze distinct Olympiad and Research task manifests, answer extraction and grading environments; do not combine their scores. |
+| FrontierScience | `blocked` | Both input manifests are frozen; the candidate prompts do not cross the prefill threshold. Freeze distinct judge/scorer and execution contracts; do not combine the scores. |
 | Terminal-Bench 2.1 | `blocked` | Provision a Harbor-compatible sandbox backend and freeze image digests, task rights, scaffold, tools, budgets and scorer for the 2.1 release. |
 
 @Irisuko is the MOD integration owner named by #8. Benchmark #254 maintainers coordinate the canonical
@@ -76,3 +76,18 @@ this older host uses the exact backport identified by the contract.
 
 Issue #8 remains open for matrix/contract review and the four blocked datasets. Canonical benchmark
 acceptance precedes website synchronization; no website readiness or performance promotion is claimed.
+
+## FrontierScience input follow-up
+
+Merged [benchmark PR #259](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/259)
+adds [immutable input manifests and grading gaps](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/d4021107ea523093bdbfc4d70473b551cc2dd08c/reports/pyramidkv-frontierscience-inputs-20261009).
+The exact frozen Olympiad and Research files have now also been downloaded and
+hash-verified on this pod. The problem-only Qwen candidate has 100 Olympiad prompts
+of 94–835 tokens and 60 Research prompts of 164–1,660 tokens; none crosses 4,096.
+Research has only 59 unique group IDs, so track/source-row IDs preserve all 60 tasks.
+The source reference answers/rubrics are kept outside solver prompts.
+
+This is an input audit with no solver or judge calls, not a new task score. The
+two track graders, judge revision/prompt/parser/calibration, runtime image,
+trials and budgets remain unfrozen. The report retains `blocked` status and does
+not promote global dataset readiness or claim compression gains.

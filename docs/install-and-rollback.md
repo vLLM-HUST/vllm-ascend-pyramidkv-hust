@@ -10,7 +10,7 @@ method. The exact serving profile is documented in the support matrix.
 python -m venv .venv-pyramidkv
 source .venv-pyramidkv/bin/activate
 python -m pip install \
-  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
+  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"
 python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
 python -m pip install --no-deps /path/to/vllm-ascend-pyramidkv-hust
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
@@ -32,9 +32,12 @@ claiming the same PyramidKV method registration. These checks do not select a
 method or prove it runtime-effective.
 
 For the source-built Qwen3.5 serving profile, see the
-[prepared-host runbook](qwen35-serving-smoke.md). That October reproduction used
+[prepared-host runbook](qwen35-serving-smoke.md). The initial October reproduction used
 direct environment activation and observed a Manager joint-plan conflict on
-`vllm.environment`; enabling both bundles alone does not prove Manager launch.
+`vllm.environment`. The newer pinned Manager fixes that composition error; see
+[the managed-launch follow-up](qwen35-managed-launch.md) for joint activation,
+configuration, raw invocation evidence and shutdown verification. Enabling both
+bundles alone still does not prove runtime effectiveness.
 
 The pinned shared commit includes the FULL-graph per-layer cache-write fix and
 Manifest 0.3 migration on the host-compatible validation branch. Shared
