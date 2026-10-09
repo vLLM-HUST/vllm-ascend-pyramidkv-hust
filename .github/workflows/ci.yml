@@ -19,7 +19,7 @@ jobs:
       - name: Install extension manager and package
         run: |
           python -m pip install \
-            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
+            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"
           python -m pip install --no-deps \
             "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
           python -m pip install -e ".[test]" build
@@ -66,7 +66,7 @@ jobs:
         run: |
           python -m venv .ecpa-smoke
           .ecpa-smoke/bin/python -m pip install \
-            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@98903e416bdb593186b8245fd95180dafde995b9"
+            "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"
           .ecpa-smoke/bin/python -m pip install --no-deps \
             "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc" \
             dist/vllm_ascend_pyramidkv_hust-*.whl
