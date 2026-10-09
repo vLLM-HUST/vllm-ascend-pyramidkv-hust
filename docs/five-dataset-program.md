@@ -50,6 +50,23 @@ No MMLU-Pro request in this contract is compression-eligible. A successful compa
 provides no evidence of PyramidKV optimization on this dataset. Do not pad prompts, silently lower the
 threshold or transfer LongBench's KV-page reduction to these five primary datasets.
 
+## Matched compatibility result
+
+The [immutable canonical report](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/b308da7eb2ecad86a9349d0dcc0f4867c197a73a/reports/pyramidkv-five-dataset-adaptation-20261009) records B0 and B1 at **55/70 correct (78.571429%)**,
+with all 70 output texts and extracted predictions identical. Both arms have zero transport failures,
+zero invalid answers and six output-limit terminations. All tasks remain in the denominator. The
+expected zero scheduler compression commits were verified, so the status remains `not-exercised`.
+
+Supporting telemetry also preserves the costs observed in this one pair: B1's HBM peak is 260 MiB
+higher per device and its mean request completion time is about 4.9% higher; sampled peak KV usage is
+unchanged. These are descriptive observations from a single sequential pair, not a general performance
+estimate. No speedup, KV reduction or capacity improvement is claimed for MMLU-Pro.
+
+The report contains raw output/archive hashes, a full 12,032-task input inventory and a CPU-only
+verifier that re-scores published outputs and checks SSE correspondence. Its
+[SHA256SUMS](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/b308da7eb2ecad86a9349d0dcc0f4867c197a73a/reports/pyramidkv-five-dataset-adaptation-20261009/SHA256SUMS) SHA-256 is
+`e581f39d0b6f87d39a3833e510074b9539e98c8591b961d70f8d551dd6b1f67b`.
+
 ## Reproduction and review
 
 Use the canonical report's frozen contract, input manifests, source/image hashes, reproduction

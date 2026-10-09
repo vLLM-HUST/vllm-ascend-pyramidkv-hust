@@ -27,7 +27,8 @@ links the canonical benchmark adapter/evidence in
 [benchmark PR #258](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/258). MMLU-Pro is
 `not-exercised` under the frozen five-shot profile: all test prompts fall below the 4,096-token
 compression gate. The other four datasets have explicit rights/scorer/sandbox blockers. The named
-70-task B0/B1 subset is a compatibility check, with no optimization claim.
+70-task B0/B1 subset scores 55/70 (78.57%) in both arms with identical outputs: a compatibility
+check, with no optimization claim.
 
 ## Host ownership and current interface gap
 
