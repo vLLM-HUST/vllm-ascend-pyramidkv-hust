@@ -39,6 +39,28 @@ threshold 4096. A direct configuration environment variable would take precedenc
 so it is explicitly removed. `VLLM_VERSION` is the host ABI selector; the actual
 installed core remains 0.23.0, not 0.25.1.
 
+## Device allocation before launch
+
+Recheck `npu-smi info` and the visible `/dev/davinci*` nodes after a container restart or device
+rebinding. Physical device assignments can change; a saved PID or a previous successful health
+response is not proof that the model still runs. Confirm the process identity and current `/health`
+response before starting another instance. Process listings inside a container can omit workloads
+that still consume physical-device HBM or compute, so an empty process list alone is not an idle-device
+check. Coordinate any occupied device with its owner rather than terminating an unknown workload.
+
+Select two available 910B2 devices for this BF16/TP2 profile and record their physical-to-logical
+mapping. In the reallocation check, physical 1/6 initially included an occupied device; after the
+user rebound all eight devices, the recovery selected physical 6/7 with
+`ASCEND_RT_VISIBLE_DEVICES=6,7` and verified two logical devices. The task-local environment wrapper
+now accepts `PYRAMIDKV_VISIBLE_DEVICES` (default `6,7` for that allocation), whereas the earlier
+restricted two-device container used `0,1`. Adjust the mapping to the actual container allocation;
+these numeric IDs are not a universal hardware default. Keep other validated serving parameters
+fixed and repeat the functional smoke below after recovery.
+
+The [resource/recovery receipt](../evidence/current/2026-10-11-runtime-resource-recheck/README.md)
+records the observed states. Changed CPU/memory quotas require new provenance; a recovery check
+must not be presented as a matched performance comparison with the previous allocation.
+
 ## Launch and check
 
 Keep the prepared-host CANN paths, source overlays, worker imports and runtime
