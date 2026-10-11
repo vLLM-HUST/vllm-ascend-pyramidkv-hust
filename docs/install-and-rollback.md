@@ -54,6 +54,13 @@ graph-slot fix; do not replace the source pin with a version-only dependency. Th
 evaluation with an explicit `pyramidkv-aligned.json` configuration; the original
 512/beta-20 smoke configuration is not interchangeable quality evidence.
 
+The upstream FULL-graph cache-write fix in shared PR #19 has merged as
+`023170af0213cb23576bdc64d5606c60744effb7`. This resolves the source-merge item, not the public
+artifact gate: the recheck still observes the same public 0.9.0 wheel hash as the static audit.
+The newer shared branch is not automatically qualified against this older prepared host; retain
+`19f322130e1b3841da953b1b421bcf3259e9b8dc` until the declared target artifact is separately accepted.
+See the [resource and release recheck](../evidence/current/2026-10-11-runtime-resource-recheck/README.md).
+
 ## Offline development tests
 
 Use an environment whose PyTorch build already matches the target host:
