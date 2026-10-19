@@ -61,6 +61,12 @@ The newer shared branch is not automatically qualified against this older prepar
 `19f322130e1b3841da953b1b421bcf3259e9b8dc` until the declared target artifact is separately accepted.
 See the [resource and release recheck](../evidence/current/2026-10-11-runtime-resource-recheck/README.md).
 
+A later [0.10.0 artifact check](../evidence/current/2026-10-19-shared-010-acceptance/README.md)
+found a published Manifest 0.3 wheel with the graph fix, but also reproduced a legacy-host router
+import failure during the model-load helper. Shared PR #23 proposes the ABI guard. The current
+PyramidKV dependency remains `>=0.9,<0.10`; a locally widened candidate descriptor is test evidence,
+not approval to install the released 0.10.0 wheel or change this source pin.
+
 ## Offline development tests
 
 Use an environment whose PyTorch build already matches the target host:
