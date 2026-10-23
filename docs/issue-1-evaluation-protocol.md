@@ -165,7 +165,7 @@ Require 409 successful requests per arm, matching prompt hashes, verified
 scheduler/TP transactions, and both quality subset gates. The analysis file
 records a failed gate rather than silently excluding its samples. Preserve the
 actual command and selected environment for each process; the
-[published evidence](../evidence/current/2026-10-09-paired-evaluation/README.md)
+[published evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
 includes the original orchestration and launch records for this server.
 
 On this server, inspect `/sys/fs/cgroup/memory.max` and `memory.current` as

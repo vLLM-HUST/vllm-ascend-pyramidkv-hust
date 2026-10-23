@@ -14,7 +14,7 @@ tested prompt was 5312 tokens. The 2048 physical-token result reflects block
 alignment; it is not a measurement of whole-model HBM savings. Request timings
 include compilation/cache effects and must not be compared as speedup results.
 
-The subsequent [paired evaluation](../evidence/current/2026-10-09-paired-evaluation/README.md)
+The subsequent [paired evaluation](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
 retains a graph cache-write failure discovered beyond this short smoke, its
 shared-adapter fix, and a larger quality/capacity/performance comparison. Use
 its adapter revision and explicit method configuration when reproducing that

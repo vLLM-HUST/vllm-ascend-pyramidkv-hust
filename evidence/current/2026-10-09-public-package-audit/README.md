@@ -22,7 +22,7 @@ Both declare version 0.9.0, so version equality cannot transfer the qualificatio
 
 This audit reads the archive; it does not install or execute the public wheel and does not claim a
 new runtime failure from that wheel. The old failure and corrected source-run evidence remain in
-[the paired evaluation receipt](../2026-10-09-paired-evaluation/README.md). Continue using the exact
+[the paired evaluation receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md). Continue using the exact
 source pin in [installation instructions](../../../docs/install-and-rollback.md) for this host. Do
 not replace it with unqualified `==0.9.0` solely because the version matches.
 

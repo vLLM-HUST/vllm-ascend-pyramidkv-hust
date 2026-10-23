@@ -2,8 +2,8 @@
   "canonical_repository": "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust",
   "display_name": "PyramidKV Ascend",
   "evidence": {
-    "index": "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust",
-    "latest_result": "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust",
+    "index": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/manifest.json",
+    "latest_result": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/manifest.json",
     "performance_claims": [],
     "qualification": "unqualified"
   },

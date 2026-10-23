@@ -1,0 +1,31 @@
+{
+  "source_repository": "vLLM-HUST/vllm-ascend-pyramidkv-hust",
+  "capsules": [
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/manifest.json",
+      "manifest_sha256": "a954a9e9abd239d03b0f6111a96a7337e892452be6d6975ec8c00cb2d890fd46"
+    }
+  ],
+  "migrated_paths": [
+    "evidence/current/2026-10-09-paired-evaluation/README.md",
+    "evidence/current/2026-10-09-paired-evaluation/SHA256SUMS",
+    "evidence/current/2026-10-09-paired-evaluation/analysis.json",
+    "evidence/current/2026-10-09-paired-evaluation/case-index.jsonl",
+    "evidence/current/2026-10-09-paired-evaluation/dataset-source.json",
+    "evidence/current/2026-10-09-paired-evaluation/environment.json",
+    "evidence/current/2026-10-09-paired-evaluation/environment.sh.txt",
+    "evidence/current/2026-10-09-paired-evaluation/graph-fix-development-scores.json",
+    "evidence/current/2026-10-09-paired-evaluation/graph-fix-development.tar.gz",
+    "evidence/current/2026-10-09-paired-evaluation/initial-failure-summary.json",
+    "evidence/current/2026-10-09-paired-evaluation/initial-failure.tar.gz",
+    "evidence/current/2026-10-09-paired-evaluation/method-config.json",
+    "evidence/current/2026-10-09-paired-evaluation/package-build.txt",
+    "evidence/current/2026-10-09-paired-evaluation/paired-results.tar.gz",
+    "evidence/current/2026-10-09-paired-evaluation/plan-manifest.json",
+    "evidence/current/2026-10-09-paired-evaluation/pyramidkv-tests.txt",
+    "evidence/current/2026-10-09-paired-evaluation/retry-candidate.py.txt",
+    "evidence/current/2026-10-09-paired-evaluation/run-pair-original.py.txt",
+    "evidence/current/2026-10-09-paired-evaluation/serve-evaluated.sh.txt",
+    "evidence/current/2026-10-09-paired-evaluation/shared-base-existing-failures.txt"
+  ]
+}

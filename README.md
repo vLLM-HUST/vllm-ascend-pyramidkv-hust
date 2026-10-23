@@ -68,7 +68,7 @@ Longer task evaluation subsequently exposed a FULL-graph cache-write bug in
 the shared adapter: capture retained common slot addresses while replay updated
 per-layer buffers. The installation below pins the host-compatible fix from
 [shared PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19).
-The [paired evaluation receipt](evidence/current/2026-10-09-paired-evaluation/README.md)
+The [paired evaluation receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
 preserves the initial failure, corrective evaluation, and limits of the result.
 A short HTTP-success smoke alone did not detect this decoding failure.
 
@@ -146,6 +146,7 @@ with `--no-deps` when appropriate.
 See:
 
 - [provenance](PROVENANCE.md)
+- [Verified benchmark originals](docs/benchmark-originals.md)
 - [maintainers](MAINTAINERS.md)
 - [support matrix](docs/support-matrix.md)
 - [host contract](docs/host-contract.md)
@@ -153,7 +154,7 @@ See:
 - [Qwen3.5 source-install serving smoke and runbook](docs/qwen35-serving-smoke.md)
 - [Current Qwen3.5 joint Manager launch](docs/qwen35-managed-launch.md)
 - [Paired evaluation protocol and reproduction](docs/issue-1-evaluation-protocol.md)
-- [Current paired quality, capacity, performance, and HBM evidence](evidence/current/2026-10-09-paired-evaluation/README.md)
+- [Current paired quality, capacity, performance, and HBM evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
 - [legacy evidence inventory](evidence/legacy/README.md)
 - [public historical Ascend 910B2 result](evidence/legacy/2026-08-13-ascend910b2/README.md)
 - [current provider-only Ascend 910B2 oracle](evidence/current/2026-09-03-provider-npu/README.md)
