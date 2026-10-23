@@ -1,10 +1,15 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
 
-EVIDENCE = Path(__file__).resolve().parents[1] / "evidence" / "legacy" / "2026-08-13-ascend910b2"
+ROOT = Path(__file__).resolve().parents[1]
+ORIGINALS = Path(os.environ["VLLM_HUST_BENCHMARK_ORIGINALS"]).resolve()
+if ORIGINALS == ROOT or ROOT in ORIGINALS.parents:
+    raise ValueError("Original inputs must be outside the source checkout")
+EVIDENCE = ORIGINALS / "evidence" / "legacy" / "2026-08-13-ascend910b2"
 EXPECTED_SHA256 = {
     "provenance.json": "84b4a0fb8ce2d92f6b8fb49f22df650f7127f56c55f43e69ff987e1ffb034385",
     "performance-eager-prefix-aggregate.json": ("65a17d6bde2d350d2d4410e7fbe813d25f2c74d0b879372518efc50ee8556424"),
@@ -13,7 +18,33 @@ EXPECTED_SHA256 = {
 
 
 def _load(name: str) -> dict:
-    return json.loads((EVIDENCE / name).read_text(encoding="utf-8"))
+    path = (EVIDENCE / name).resolve()
+    if ORIGINALS not in path.parents:
+        raise ValueError("Original input escapes external directory")
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != EXPECTED_SHA256[name]:
+        raise ValueError("Original input checksum mismatch")
+    return json.loads(raw)
+
+
+def test_corrupt_original_is_rejected(tmp_path, monkeypatch) -> None:
+    monkeypatch.setitem(_load.__globals__, "ORIGINALS", tmp_path)
+    monkeypatch.setitem(_load.__globals__, "EVIDENCE", tmp_path)
+    (tmp_path / "provenance.json").write_text('{"synthetic":true}')
+    with pytest.raises(ValueError, match="checksum"):
+        _load("provenance.json")
+
+
+def test_missing_and_escaping_originals_are_rejected(tmp_path, monkeypatch) -> None:
+    external = tmp_path / "originals"
+    external.mkdir()
+    monkeypatch.setitem(_load.__globals__, "ORIGINALS", external)
+    monkeypatch.setitem(_load.__globals__, "EVIDENCE", external)
+    with pytest.raises(FileNotFoundError):
+        _load("provenance.json")
+    (external / "provenance.json").symlink_to(tmp_path / "outside.json")
+    with pytest.raises(ValueError, match="escapes"):
+        _load("provenance.json")
 
 
 def test_public_legacy_evidence_is_byte_identical_to_recorded_sources() -> None:

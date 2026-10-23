@@ -81,7 +81,7 @@ exact host/provider commit trio, raw real-device evidence, and verified
 disable, restart, uninstall, and rollback behavior.
 
 The public historical subset is documented under
-`evidence/legacy/2026-08-13-ascend910b2/`. Its provenance, performance, and
+[benchmark legacy archive](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/2026-08-13-ascend910b2/). Its provenance, performance, and
 quality JSON files are byte-identical copies of the retained final matched
 evidence, with source SHA-256 values recorded in the accompanying report.
 
