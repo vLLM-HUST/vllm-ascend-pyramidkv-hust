@@ -8,6 +8,10 @@
     {
       "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/manifest.json",
       "manifest_sha256": "0f7b086c8d41ed6d5ecbbe949d508570a3fa1749bbb489c87ac907ebc6316494"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/4aa6fc4cced01cdfb049f6ee6311e63cb68d69f4/archive/mod-targeted-20261023/pyramid-legacy/manifest.json",
+      "manifest_sha256": "98bc9ab50b6f0e264b058ca58556ae3579b1361ec4c8891cbc06bd95e29b0998"
     }
   ],
   "migrated_paths": [
@@ -128,6 +132,11 @@
     "evidence/current/2026-10-19-shared-010-acceptance/installed-provenance.json",
     "evidence/current/2026-10-19-shared-010-acceptance/raw-members.json",
     "evidence/current/2026-10-19-shared-010-acceptance/raw.tar.gz",
-    "evidence/current/2026-10-19-shared-010-acceptance/receipt.json"
+    "evidence/current/2026-10-19-shared-010-acceptance/receipt.json",
+    "evidence/legacy/2026-08-13-ascend910b2/README.md",
+    "evidence/legacy/2026-08-13-ascend910b2/performance-eager-prefix-aggregate.json",
+    "evidence/legacy/2026-08-13-ascend910b2/provenance.json",
+    "evidence/legacy/2026-08-13-ascend910b2/quality-summary.json",
+    "evidence/legacy/README.md"
   ]
 }

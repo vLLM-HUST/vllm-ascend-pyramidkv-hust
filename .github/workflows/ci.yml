@@ -7,6 +7,8 @@ on:
 
 jobs:
   package:
+    env:
+      VLLM_HUST_BENCHMARK_ORIGINALS: /tmp/benchmark-originals
     strategy:
       matrix:
         python: ["3.10", "3.11", "3.12"]
@@ -25,6 +27,7 @@ jobs:
           python -m pip install -e ".[test]" build
       - run: ruff check .
       - run: ruff format --check .
+      - run: python scripts/fetch_benchmark_originals.py "$VLLM_HUST_BENCHMARK_ORIGINALS"
       - run: pytest -q
       - run: python -m build
       - name: Verify active descriptor contract
