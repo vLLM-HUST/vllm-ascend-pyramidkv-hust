@@ -10,7 +10,7 @@
       "manifest_sha256": "0f7b086c8d41ed6d5ecbbe949d508570a3fa1749bbb489c87ac907ebc6316494"
     },
     {
-      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/4aa6fc4cced01cdfb049f6ee6311e63cb68d69f4/archive/mod-targeted-20261023/pyramid-legacy/manifest.json",
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/manifest.json",
       "manifest_sha256": "98bc9ab50b6f0e264b058ca58556ae3579b1361ec4c8891cbc06bd95e29b0998"
     }
   ],

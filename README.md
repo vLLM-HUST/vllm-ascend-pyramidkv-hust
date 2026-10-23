@@ -155,8 +155,8 @@ See:
 - [Current Qwen3.5 joint Manager launch](docs/qwen35-managed-launch.md)
 - [Paired evaluation protocol and reproduction](docs/issue-1-evaluation-protocol.md)
 - [Current paired quality, capacity, performance, and HBM evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
-- [legacy evidence inventory](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/4aa6fc4cced01cdfb049f6ee6311e63cb68d69f4/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/README.md)
-- [public historical Ascend 910B2 result](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/4aa6fc4cced01cdfb049f6ee6311e63cb68d69f4/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/2026-08-13-ascend910b2/README.md)
+- [legacy evidence inventory](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/README.md)
+- [public historical Ascend 910B2 result](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/2026-08-13-ascend910b2/README.md)
 - [current provider-only Ascend 910B2 oracle](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-09-03-provider-npu/README.md)
 
 ## Canonical MOD metadata

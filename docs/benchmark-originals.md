@@ -10,7 +10,7 @@ Other historical collections are not declared migrated by this change.
 Together these collections preserve all 118 former `evidence/current/` records, including original
 checksum-covered reports. The download combines both capsules at their original relative paths,
 so internal historical references remain resolvable without changing or re-signing the originals.
-The five `evidence/legacy/` records are now preserved in the [legacy manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/4aa6fc4cced01cdfb049f6ee6311e63cb68d69f4/archive/mod-targeted-20261023/pyramid-legacy/manifest.json).
+The five `evidence/legacy/` records are now preserved in the [legacy manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/manifest.json).
 Legacy tests read the external originals and retain all SHA256, ratio and shared-provenance
 assertions. Their EAGER/prefix-caching identity is historical, not current graph-mode admission.
 
