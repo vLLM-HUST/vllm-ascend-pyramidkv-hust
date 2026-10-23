@@ -47,7 +47,7 @@ The pinned shared commit includes the FULL-graph per-layer cache-write fix and
 Manifest 0.3 migration on the host-compatible validation branch. Shared
 [PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19) carries
 the runtime fix against its newer default branch. The package version alone
-does not distinguish these revisions. The [public 0.9.0 wheel audit](../evidence/current/2026-10-09-public-package-audit/README.md)
+does not distinguish these revisions. The [public 0.9.0 wheel audit](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-public-package-audit/README.md)
 confirms that the downloadable wheel differs from this qualified source and still lacks the
 graph-slot fix; do not replace the source pin with a version-only dependency. The
 [paired protocol](issue-1-evaluation-protocol.md) reproduces the current
@@ -59,9 +59,9 @@ The upstream FULL-graph cache-write fix in shared PR #19 has merged as
 artifact gate: the recheck still observes the same public 0.9.0 wheel hash as the static audit.
 The newer shared branch is not automatically qualified against this older prepared host; retain
 `19f322130e1b3841da953b1b421bcf3259e9b8dc` until the declared target artifact is separately accepted.
-See the [resource and release recheck](../evidence/current/2026-10-11-runtime-resource-recheck/README.md).
+See the [resource and release recheck](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-11-runtime-resource-recheck/README.md).
 
-A later [0.10.0 artifact check](../evidence/current/2026-10-19-shared-010-acceptance/README.md)
+A later [0.10.0 artifact check](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-19-shared-010-acceptance/README.md)
 found a published Manifest 0.3 wheel with the graph fix, but also reproduced a legacy-host router
 import failure during the model-load helper. Shared PR #23 proposes the ABI guard. The current
 PyramidKV dependency remains `>=0.9,<0.10`; a locally widened candidate descriptor is test evidence,

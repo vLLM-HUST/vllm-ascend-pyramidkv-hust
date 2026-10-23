@@ -57,7 +57,7 @@ restricted two-device container used `0,1`. Adjust the mapping to the actual con
 these numeric IDs are not a universal hardware default. Keep other validated serving parameters
 fixed and repeat the functional smoke below after recovery.
 
-The [resource/recovery receipt](../evidence/current/2026-10-11-runtime-resource-recheck/README.md)
+The [resource/recovery receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-11-runtime-resource-recheck/README.md)
 records the observed states. Changed CPU/memory quotas require new provenance; a recovery check
 must not be presented as a matched performance comparison with the previous allocation.
 
@@ -103,7 +103,7 @@ cannot accidentally route through an external proxy.
 ## Recorded device evidence
 
 The managed-launch receipt is stored under
-[`evidence/current/2026-10-09-manager-joint-launch`](../evidence/current/2026-10-09-manager-joint-launch).
+[`evidence/current/2026-10-09-manager-joint-launch`](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-manager-joint-launch).
 It records the exact wheel, selected process environment, Manager configuration,
 server command, raw smoke requests/responses, metrics and matched commits.
 Historical direct-launch and paired-evaluation archives remain unchanged.
