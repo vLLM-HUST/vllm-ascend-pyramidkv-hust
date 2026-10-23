@@ -86,6 +86,6 @@ quality JSON files are byte-identical copies of the retained final matched
 evidence, with source SHA-256 values recorded in the accompanying report.
 
 The current provider-only grouped-GQA oracle is recorded separately under
-`evidence/current/2026-09-03-provider-npu/`. Its tested file hashes bind the
+[`evidence/current/2026-09-03-provider-npu/`](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-09-03-provider-npu). Its tested file hashes bind the
 result to the working-tree algorithm and oracle, and its limitations explicitly
 exclude paired-host, quality, capacity, and performance claims.

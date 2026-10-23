@@ -25,7 +25,7 @@ caches remain unchanged. CPU regression tests additionally cover distinct per-he
 scattered destinations and partial pages. The full local suite passed 78 tests with one opt-in NPU
 test skipped; the separate diagnostic above actually ran on NPU.
 
-[Raw timing samples, logs, source hashes and checksums](../evidence/current/2026-10-09-selected-page-diagnostic)
+[Raw timing samples, logs, source hashes and checksums](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-diagnostic)
 are retained. Temporary allocations and individual operator events do not establish a service HBM
 reduction. The subsequent serving pair completed 409 requests per implementation, with zero failures
 and identical outputs/F1 on all 300 quality samples. There were 33 synthetic output differences (32
@@ -38,7 +38,7 @@ an APC repeat with 20,480 cached prompt tokens. The same query/source cache was 
 methods, restoring private destination pages between them. This narrows the materialization
 investigation; it does not prove cross-process generation determinism.
 
-[Serving and real-cache diagnostic evidence](../evidence/current/2026-10-09-selected-page-serving)
+[Serving and real-cache diagnostic evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-serving)
 includes raw SSE, failures, worker hashes and the diagnostic overlay. The dedicated fresh-process
 ABBA series is now complete: 548 requests succeeded, 372 compression transactions paired with both
 TP workers, and all SSE/usage/input hashes were verified. The canonical

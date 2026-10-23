@@ -1,6 +1,6 @@
 # Qwen3.5 serving smoke on a prepared Ascend host
 
-The [2026-10-09 UTC receipt](../evidence/current/2026-10-09-qwen35-serving/result.json)
+The [2026-10-09 UTC receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/result.json)
 records real Qwen3.5-35B-A3B inference on two Ascend 910B2 devices with
 PyramidKV, APC, MTP2, async scheduling, chunked prefill, and
 `FULL_AND_PIECEWISE`. Three requests returned the expected text. Both long
@@ -39,7 +39,7 @@ installation. Do not replace it with a generic PyTorch wheel. This run used:
 
 The local model revision was `59d61f3ce65a6d9863b86d2e96597125219dc754`.
 All 14 weight shards matched the download metadata SHA256 values; see
-[model hashes](../evidence/current/2026-10-09-qwen35-serving/model-hashes.json).
+[model hashes](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/model-hashes.json).
 This is a different model revision from the September candidate qualification.
 
 The installed Ascend metadata was `0.23.0.post1`. `VLLM_VERSION=0.25.1` in the
@@ -50,8 +50,8 @@ strings for these experimental hosts.
 The host's native PyTorch bindings and the Qwen-required CANN operators were
 built from source. The upstream `csrc/build.sh --ops` selector limited the
 operator build to this deployment. The evidence directory retains the
-[operator build command](../evidence/current/2026-10-09-qwen35-serving/build-qwen.sh.txt)
-and [native build command](../evidence/current/2026-10-09-qwen35-serving/build-native.py.txt).
+[operator build command](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/build-qwen.sh.txt)
+and [native build command](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/build-native.py.txt).
 These are snapshots from an already prepared checkout, not a fresh-server
 installer. On the original interrupted build, unused binary output directories
 had to be moved out of `csrc/build/binary/ascend910b/bin` before rerunning
@@ -61,7 +61,7 @@ not automate recovery of arbitrary stale build trees.
 The pinned shared adapter has a Manifest 0.2 carrier. For Manager inspection,
 this run applied the existing upstream manifest migration to an isolated
 checkout using the retained
-[manifest-only patch](../evidence/current/2026-10-09-qwen35-serving/manager-manifest-backport.patch).
+[manifest-only patch](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/manager-manifest-backport.patch).
 Its runtime Python was unchanged. Editable plugin installations should be
 discovered through their installed distribution metadata; adding their `src`
 directories to `PYTHONPATH` can expose stale egg-info and break discovery.
@@ -71,7 +71,7 @@ directories to `PYTHONPATH` can expose stale egg-info and break discovery.
 The scripts expect CANN, the built custom operator vendor environment, and the
 pinned Python packages to be loaded already. `pipeline_worker` and
 `frontier_worker` must be importable from the dev-hub worker helper directories.
-The [environment snapshot](../evidence/current/2026-10-09-qwen35-serving/environment.sh.txt)
+The [environment snapshot](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/environment.sh.txt)
 shows the exact original setup. In that prepared workspace:
 
 ```bash
@@ -125,7 +125,7 @@ undo explicit environment variables.
   activation. Historical Manager lifecycle evidence remains separate; it does
   not establish that this source-install combination supports Manager launch.
 - Inherited package metadata is not dependency-clean. The retained
-  [dependency check](../evidence/current/2026-10-09-qwen35-serving/dependency-check.txt)
+  [dependency check](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/dependency-check.txt)
   includes host/API version constraints and unrelated profiler dependencies.
   Successful inference does not imply all optional integrations work.
 - This smoke receipt does not qualify quality, capacity, or comparative

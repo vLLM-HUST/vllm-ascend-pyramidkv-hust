@@ -1,6 +1,8 @@
 import hashlib
 import importlib.util
 import json
+import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -41,3 +43,14 @@ def test_no_originals_return_to_git():
     config = json.loads((ROOT / "BENCHMARK_ORIGINALS.json").read_text())
     tracked = set(subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines())
     assert not tracked.intersection(config["migrated_paths"])
+
+
+def test_no_dangling_current_evidence_links():
+    tracked = subprocess.check_output(["git", "ls-files", "*.md"], cwd=ROOT, text=True).splitlines()
+    for relative in tracked:
+        path = ROOT / relative
+        for target in re.findall(r"\]\(([^)]+)\)", path.read_text()):
+            if "://" in target or target.startswith("#"):
+                continue
+            resolved = os.path.normpath(str(Path(relative).parent / target.split("#")[0]))
+            assert not resolved.startswith("evidence/current/"), (relative, target)
