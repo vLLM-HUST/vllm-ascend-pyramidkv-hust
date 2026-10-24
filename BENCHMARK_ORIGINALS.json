@@ -12,6 +12,14 @@
     {
       "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/manifest.json",
       "manifest_sha256": "98bc9ab50b6f0e264b058ca58556ae3579b1361ec4c8891cbc06bd95e29b0998"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/pyramid-mixed/manifest.json",
+      "manifest_sha256": "7e98a12585a1a6c2472438a2eb070e3fe2b523091278db3c8d3fed44662f62ff"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/4139441f928744af14f89c0cb95cd999cbd6915d/archive/mod-targeted-20261023/pyramid-selected/manifest.json",
+      "manifest_sha256": "54b3396fafe95a0238163f5255cec2ca7582fdd895a5f49830637081055ddb2b"
     }
   ],
   "migrated_paths": [
@@ -138,5 +146,48 @@
     "evidence/legacy/2026-08-13-ascend910b2/provenance.json",
     "evidence/legacy/2026-08-13-ascend910b2/quality-summary.json",
     "evidence/legacy/README.md"
-  ]
+  ],
+  "document_projections": {
+    "docs/selected-page-serving-result.md": {
+      "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/pyramid-mixed/snapshot/docs/selected-page-serving-result.md",
+      "sha256": "7984bb315e77f73c282fdad66dfbdc966fb60934b8d57bc728875bf7bdf3793d"
+    },
+    "docs/qwen35-serving-smoke.md": {
+      "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/pyramid-mixed/snapshot/docs/qwen35-serving-smoke.md",
+      "sha256": "ee870cd59b761d773b26a298f8ef68d96621a2cd2369bea89b9c65522def7f0c"
+    },
+    "docs/selected-page-materialization.md": {
+      "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/4139441f928744af14f89c0cb95cd999cbd6915d/archive/mod-targeted-20261023/pyramid-selected/snapshot/docs/selected-page-materialization.md",
+      "sha256": "b63c12750475692961bf012b82c99cd3f773f824cf588451524fa5f2a42403e6"
+    }
+  },
+  "document_data_links": {
+    "docs/selected-page-materialization.md": [
+      {
+        "path": "evidence/current/2026-10-09-selected-page-diagnostic/interleaved-method.json",
+        "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-diagnostic/interleaved-method.json",
+        "sha256": "dce67cbe98e9055fe7ac84d7bd9e0e97f3c1294fc076f207086c78d3ea1e257a"
+      },
+      {
+        "path": "evidence/current/2026-10-09-selected-page-diagnostic/interleaved-method.log",
+        "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-diagnostic/interleaved-method.log",
+        "sha256": "9d9b7575579fb15147f2aaad20266a71778c54fd6d4ce5bd1f5395e018428e7f"
+      },
+      {
+        "path": "evidence/current/2026-10-09-selected-page-serving/serving-comparison.json",
+        "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-serving/serving-comparison.json",
+        "sha256": "4d03200d91e0fe1ee8c49cba5d8531d8330e01e4c0c8d3cb5ae05be36eda3067"
+      },
+      {
+        "path": "evidence/current/2026-10-09-selected-page-serving/serving-limitations.json",
+        "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-serving/serving-limitations.json",
+        "sha256": "733aaa2afaee5af71d9b03f400b27394bfadbd76d74cb1faeb4893e13e2147cf"
+      },
+      {
+        "path": "evidence/current/2026-10-09-selected-page-serving/shadow-summary.json",
+        "url": "https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-selected-page-serving/shadow-summary.json",
+        "sha256": "b1d2a75ae67f2ad9d64ea9ccfee40ea7557031555e9792a0ef43a7e8055d6534"
+      }
+    ]
+  }
 }

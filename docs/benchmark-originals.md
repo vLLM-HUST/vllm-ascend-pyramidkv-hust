@@ -29,3 +29,9 @@ The [mixed-document manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/b
 historical smoke and selected-page serving narratives, with LICENSE/NOTICE. Source documents now
 retain method/installation guidance and link to these fixed original result bodies. This does not
 change the legacy semantic tests, result identity or release acceptance boundary.
+
+The [selected-page narrative manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/4139441f928744af14f89c0cb95cd999cbd6915d/archive/mod-targeted-20261023/pyramid-selected/manifest.json)
+preserves the full operator/serving document with LICENSE/NOTICE. Both this capsule and the
+previous mixed-document capsule are now downloaded and SHA-checked. Three document projections
+and five data-member links are checked against the external originals in CI. Current method and
+reproduction guidance remains here; no historical measurement is promoted to new acceptance.
