@@ -24,3 +24,8 @@ export VLLM_HUST_BENCHMARK_ORIGINALS=/absolute/external/originals
 The downloader checks the pinned manifest and each file's length and SHA256, rejects unsafe paths
 and never executes archived code. CI repeats the readback and rejects the migrated paths returning
 to Git. Fixed benchmark originals and unchanged source Git history preserve recoverability.
+
+The [mixed-document manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/pyramid-mixed/manifest.json) preserves the full
+historical smoke and selected-page serving narratives, with LICENSE/NOTICE. Source documents now
+retain method/installation guidance and link to these fixed original result bodies. This does not
+change the legacy semantic tests, result identity or release acceptance boundary.
