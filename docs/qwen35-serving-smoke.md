@@ -1,18 +1,10 @@
 # Qwen3.5 serving smoke on a prepared Ascend host
 
-The [2026-10-09 UTC receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-qwen35-serving/result.json)
-records real Qwen3.5-35B-A3B inference on two Ascend 910B2 devices with
-PyramidKV, APC, MTP2, async scheduling, chunked prefill, and
-`FULL_AND_PIECEWISE`. Three requests returned the expected text. Both long
-requests committed 5312-to-2048 full-attention KV compression on both TP ranks;
-the repeated request reported 2048 cached prompt tokens. The initial run
-drafted 14 tokens and accepted 10.
-
-These are functional observations, not quality, capacity, or performance
-qualification. The maximum configured context was 32768, but the longest
-tested prompt was 5312 tokens. The 2048 physical-token result reflects block
-alignment; it is not a measurement of whole-model HBM savings. Request timings
-include compilation/cache effects and must not be compared as speedup results.
+The [complete historical smoke report](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/pyramid-mixed/snapshot/docs/qwen35-serving-smoke.md)
+retains the original request counts, compression/cache observations, exact versions and qualification
+limits. These are functional observations, not quality, capacity or performance qualification.
+Request timings include compilation/cache effects and must not be compared as speedup results;
+physical KV token counts do not measure whole-model HBM savings.
 
 The subsequent [paired evaluation](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
 retains a graph cache-write failure discovered beyond this short smoke, its
