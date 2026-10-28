@@ -34,6 +34,12 @@ check, with no optimization claim.
 
 ## Host ownership and current interface gap
 
+PyramidKV owns its [experimental protocols](docs/benchmark/README.md) and
+[downstream metadata-adapter migration requirements](docs/metadata-adapter-boundary.md).
+The proposed metadata optimization in shared PR #33 is on hold for the shared
+interface refactor; its frozen experimental source is not a merged integration.
+
+
 The former host-side Drafts in `vllm-hust` and `vllm-ascend-hust` were
 withdrawn. The confirmed shared lifecycle owner is
 [`vllm-ascend-kvcompress-hust`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust),
@@ -154,6 +160,7 @@ See:
 - [Qwen3.5 source-install serving smoke and runbook](docs/qwen35-serving-smoke.md)
 - [Current Qwen3.5 joint Manager launch](docs/qwen35-managed-launch.md)
 - [Paired evaluation protocol and reproduction](docs/issue-1-evaluation-protocol.md)
+- [Runtime metadata and fixed-budget reproduction boundaries](docs/runtime-performance-boundary.md)
 - [Current paired quality, capacity, performance, and HBM evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
 - [legacy evidence inventory](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/README.md)
 - [public historical Ascend 910B2 result](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/2026-08-13-ascend910b2/README.md)

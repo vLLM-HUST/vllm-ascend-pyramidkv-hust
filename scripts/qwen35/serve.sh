@@ -18,7 +18,7 @@ exec python -m vllm.entrypoints.cli.main serve "$MODEL_PATH" \
   --served-model-name qwen35-pyramidkv \
   --tensor-parallel-size 2 --distributed-executor-backend mp --worker-cls pipeline_worker.Worker \
   --dtype bfloat16 --max-model-len 32768 --max-num-seqs 4 --max-num-batched-tokens 4096 \
-  --gpu-memory-utilization 0.9 --kv-cache-memory-bytes 8589934592 \
+  --gpu-memory-utilization 0.9 --kv-cache-memory-bytes "${PYRAMIDKV_KV_CACHE_MEMORY_BYTES:-8589934592}" \
   --seed 17 --enable-prefix-caching --mamba-cache-mode align \
   --enable-chunked-prefill --async-scheduling --enable-prompt-tokens-details \
   --additional-config '{"enable_cpu_binding":false}' \
