@@ -34,6 +34,12 @@ check, with no optimization claim.
 
 ## Host ownership and current interface gap
 
+PyramidKV owns its [experimental protocols](docs/benchmark/README.md) and
+[downstream metadata-adapter migration requirements](docs/metadata-adapter-boundary.md).
+The proposed metadata optimization in shared PR #33 is on hold for the shared
+interface refactor; its frozen experimental source is not a merged integration.
+
+
 The former host-side Drafts in `vllm-hust` and `vllm-ascend-hust` were
 withdrawn. The confirmed shared lifecycle owner is
 [`vllm-ascend-kvcompress-hust`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust),

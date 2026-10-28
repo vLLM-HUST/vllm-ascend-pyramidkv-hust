@@ -6,6 +6,8 @@ Reduced metadata host-call time and lower logical KV ownership do not establish
 service acceleration or lower device HBM. The distinct fixed-budget protocol is
 [pinned before measurement](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/blob/30dfdc59b6bfc03f96ce286846096f80e590d4c9/docs/benchmark/pyramidkv-memory-pressure.md).
 It must be evaluated independently from the default-budget service.
+The maintained protocols now belong to [this downstream repository](benchmark/README.md);
+the pinned upstream link above preserves the original preregistration identity.
 
 The [completed fixed-budget pressure report](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/c4093ae07d49ced6ac534befb62c10498ccbd08f/reports/pyramidkv-metadata-net-cost-20261028/memory-pressure/README.md)
 records the full matched matrix, recomputation counters, latency tradeoffs and
@@ -20,7 +22,10 @@ public-wheel acceptance receipt.
 
 The batched adapter source is
 [`f33785844be5bff7716c9464dd8444ef0b4b05e9`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/commit/f33785844be5bff7716c9464dd8444ef0b4b05e9),
-reviewed in [shared PR #33](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/33).
+preserved in [shared PR #33](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/33).
+That proposal is now Draft pending the upstream interface refactor. The
+[ownership and migration boundary](metadata-adapter-boundary.md) explains what
+must move downstream. The measured snapshot does not qualify a future port.
 Load that source with the recorded distribution/Manager environment before using
 its optional flag; setting the flag does not upgrade an installed adapter.
 
