@@ -77,7 +77,10 @@ Run from the repository root. Adapt environment/model paths for another host.
 Stop any existing deployment on the same devices and port before starting.
 The default listener is `127.0.0.1:8000`, with model name `qwen35-pyramidkv`;
 `SERVE_HOST` and `SERVE_PORT` can override the listener. This profile enables
-text only, reserves 8 GiB of KV capacity per worker, and allows four sequences.
+text only, reserves 8 GiB of KV capacity per worker by default, and allows four sequences.
+`PYRAMIDKV_KV_CACHE_MEMORY_BYTES` explicitly overrides that reservation in bytes.
+See the [separate fixed-budget reproduction guide](runtime-performance-boundary.md)
+for the experimental metadata candidate and comparison boundaries.
 Startup includes model loading, compilation, and graph capture; wait for
 `Application startup complete` and a successful health check:
 
