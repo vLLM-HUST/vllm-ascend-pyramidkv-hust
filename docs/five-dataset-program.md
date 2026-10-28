@@ -10,11 +10,11 @@ second scorer or relabel existing LongBench results as primary-dataset evidence.
 
 ## Applicability and ownership
 
-The original candidate contracts below remain frozen. The shared program now has a V1/ARM SWE
-backend and an ARM64 derived-image Terminal route; it is no longer accurate to describe the
-organization as having no execution backend. These are not yet an allocated, qualified replacement
-for this MOD's V2/AMD64 candidate. See the [backend contract decision](backend-contract-options.md)
-for the exact differences, proposed route and resource handoff. The user's judge-calibration
+The original candidate contracts below remain historical frozen records. On 2026-10-28, the user
+approved preparation of a new SWE V1 / Terminal ARM64 contract using the shared route. It is no
+longer accurate to describe the organization as having no execution backend; actual allocation and
+qualification for this MOD remain pending. See the [approved preparation scope](backend-contract-options.md)
+for the exact differences, selected route and resource handoff. The user's judge-calibration
 requirement remains unchanged. Shared #403's current trace-plan review does not replace task quality
 or authorize new PyramidKV measurements by itself.
 
@@ -35,8 +35,8 @@ The required source files and image metadata were
 independently retrieved and verified here; source availability no longer blocks these audits.
 Harbor 0.24.0 is installed in a separate local ARM64 validation environment; its earlier successful
 local model-transport check is historical, not a current service-health assertion. Under the
-unamended candidate, AMD64 sandbox execution and backend-to-model connectivity remain open. Adopting
-the shared ARM route requires the separately named contract decision and qualification above.
+historical candidate, AMD64 execution remains incomplete. The newly selected shared ARM route needs
+its own backend-to-model connectivity and separately named contract qualification above.
 
 ## Evidence boundary
 

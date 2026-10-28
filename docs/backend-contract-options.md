@@ -1,7 +1,8 @@
-# Backend contract decision for issue #8
+# Shared-backend contract preparation for issue #8
 
-Status: proposal for a scope decision; no replacement contract or new measurement is approved by
-this document. Checked on 2026-10-28 (Asia/Shanghai).
+Status: on 2026-10-28 (Asia/Shanghai), the user approved preparing a separately named SWE V1 /
+Terminal ARM64 contract and its adapters. Execution still requires the concrete plan and resource
+handoff below. No completed replacement contract or new measurement is asserted by this document.
 
 Tracking: [PyramidKV #8](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues/8),
 [benchmark #254](https://github.com/vLLM-HUST/vllm-hust-benchmark/issues/254), and the newer
@@ -43,23 +44,21 @@ The prior
 remains valid evidence of the runner's original V1 guard. The newer source-lock expansion does not
 convert it into a V2 runner.
 
-## Decision requested
+## Approved preparation scope
 
-**Recommended: prepare a separately named shared-backend contract.** Use SWE V1 and Terminal ARM64
-derived images as the proposed future #8 execution route, retaining the old V2/AMD64 input audits as
-historical evidence. This choice authorizes contract preparation and adapter work; actual execution
-still depends on the concrete plan and resource handoff below. It does not transfer another MOD's
-results or mark any blocked dataset complete.
+Prepare a separately named shared-backend contract using SWE V1 and Terminal ARM64 derived images as
+the future #8 execution route. Retain the old V2/AMD64 input audits as historical evidence. The user
+approved this preparation and adapter work; actual execution still depends on the concrete plan and
+resource handoff below. It does not transfer another MOD's results or mark any blocked dataset
+complete.
 
-**Alternative: retain the original V2/AMD64 execution contract.** Keep the existing inputs and
-architecture as requirements. The shared V1/ARM implementation can inform a V2 adapter, but a
-compatible backend, V2-specific evaluator/image qualification and resource handoff remain necessary.
-This option cannot assume the shared program will provision AMD64 resources after its direction
-changed.
+The V2/AMD64 audits retain their original identities and incomplete execution status. They are not
+rewritten as V1 results. A matching AMD64 backend is no longer the prerequisite for preparing the
+new, user-selected ARM route.
 
-Both choices retain HLE/FrontierScience calibration requirements. Neither choice substitutes fixed
-trace replay for the five-dataset task-quality objective. A later trace-only study would be a
-separate supplementary contract, with its own decision and claims.
+HLE/FrontierScience calibration requirements remain unchanged. Fixed trace replay does not
+substitute for the five-dataset task-quality objective. A later trace-only study would be a separate
+supplementary contract, with its own decision and claims.
 
 ## Concrete handoff before execution
 
@@ -80,7 +79,7 @@ separate supplementary contract, with its own decision and claims.
 1. Resolve the shared scheduling/plan-review state with #403's execution owners. Publish the
    canonical contract and later evidence in benchmark first; this MOD repository links to it.
 
-The current proposal contains no new task execution, model response, score, performance estimate,
+This preparation contains no new task execution, model response, score, performance estimate,
 workspace deployment or automatic launch command.
 
 ## Independent remaining work for issue #1
