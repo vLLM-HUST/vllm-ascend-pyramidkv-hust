@@ -10,6 +10,14 @@ second scorer or relabel existing LongBench results as primary-dataset evidence.
 
 ## Applicability and ownership
 
+The original candidate contracts below remain frozen. The shared program now has a V1/ARM SWE
+backend and an ARM64 derived-image Terminal route; it is no longer accurate to describe the
+organization as having no execution backend. These are not yet an allocated, qualified replacement
+for this MOD's V2/AMD64 candidate. See the [backend contract decision](backend-contract-options.md)
+for the exact differences, proposed route and resource handoff. The user's judge-calibration
+requirement remains unchanged. Shared #403's current trace-plan review does not replace task quality
+or authorize new PyramidKV measurements by itself.
+
 | Dataset | PyramidKV status | Reason and next step |
 | --- | --- | --- |
 | MMLU-Pro | `not-exercised` | All 12,032 frozen test prompts are 898–2,910 tokens with the fixed five-shot Qwen template, below the >4,096-token prefill compression threshold. The 70-task B0/B1 subset checks task-quality compatibility only. Review the named contract; full-test accuracy remains unmeasured. |
@@ -21,12 +29,14 @@ second scorer or relabel existing LongBench results as primary-dataset evidence.
 @Irisuko is the MOD integration owner named by #8. Benchmark #254 maintainers coordinate the canonical
 rights/scorer/runtime contracts; these are coordination roles, not a statement of maintainer approval.
 The original machine-readable matrix remains an immutable historical receipt; the newer linked
-reports below record completed audits and remaining conditions. This ARM64 pod has no usable
-Docker/Podman socket or Harbor backend. The required source files and image metadata were
+reports below record completed audits and remaining conditions. The local pod check still found no
+Docker/Podman CLI or default Docker socket; this does not describe other shared workspaces.
+The required source files and image metadata were
 independently retrieved and verified here; source availability no longer blocks these audits.
-Harbor 0.24.0 is installed in a separate local ARM64 validation environment, and its client can
-reach this pod's model API. AMD64 sandbox execution and connectivity from the future backend remain
-external requirements.
+Harbor 0.24.0 is installed in a separate local ARM64 validation environment; its earlier successful
+local model-transport check is historical, not a current service-health assertion. Under the
+unamended candidate, AMD64 sandbox execution and backend-to-model connectivity remain open. Adopting
+the shared ARM route requires the separately named contract decision and qualification above.
 
 ## Evidence boundary
 
