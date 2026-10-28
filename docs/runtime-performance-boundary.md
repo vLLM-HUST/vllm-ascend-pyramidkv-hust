@@ -7,6 +7,10 @@ service acceleration or lower device HBM. The distinct fixed-budget protocol is
 [pinned before measurement](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/blob/30dfdc59b6bfc03f96ce286846096f80e590d4c9/docs/benchmark/pyramidkv-memory-pressure.md).
 It must be evaluated independently from the default-budget service.
 
+The [completed fixed-budget pressure report](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/c4093ae07d49ced6ac534befb62c10498ccbd08f/reports/pyramidkv-metadata-net-cost-20261028/memory-pressure/README.md)
+records the full matched matrix, recomputation counters, latency tradeoffs and
+bounded conclusion. Read both reports when deciding whether to enable compression.
+
 ## Prepared-host configuration
 
 Use the exact model, host, native operators, package identities and source set
