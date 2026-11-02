@@ -47,8 +47,8 @@ Files: pyproject, manifest, CI, launcher/configs, manifest tests.
 Files: README, install/rollback, host-contract, support matrix, provenance/NOTICE,
 MOD metadata and migration design; NPU/integration validation scripts as needed.
 
-- [ ] Run full suite, lint, format and build on final source.
-- [ ] Run native metadata/selection oracle and standalone serving validation.
-- [ ] Update current docs; clearly label historical shared-adapter instructions.
+- [x] Run full suite, lint, format and build on final source.
+- [x] Run native metadata/selection oracle and standalone serving validation.
+- [x] Update current docs; clearly label historical shared-adapter instructions.
 - [x] Request fresh whole-branch review; address important findings with tests.
-- [ ] Publish PR and validation, read back remote checks and state.
+- [x] Publish PR and validation, read back remote checks and state.
