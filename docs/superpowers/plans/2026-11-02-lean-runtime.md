@@ -29,12 +29,12 @@ Files: create `algorithm.py`; delete old provider/contracts/registry; modify
 Interfaces: `PyramidKVConfig`, `PyramidKVSelection`, `select_pyramid_indices`,
 `materialize_pyramid_kv`, `select_pyramid_kv`; unchanged arithmetic and arguments.
 
-- [ ] Run baseline suite and preserve results.
-- [ ] Add a subprocess import-isolation regression; observe failure.
-- [ ] Move config/algorithm verbatim, remove obsolete API/runtime and only its
+- [x] Run baseline suite and preserve results.
+- [x] Add a subprocess import-isolation regression; observe failure.
+- [x] Move config/algorithm verbatim, remove obsolete API/runtime and only its
   behavior tests; retain all algorithm oracle assertions.
-- [ ] Update consumers and 0.4.0.dev0 migration documentation; run relevant tests.
-- [ ] Commit the independently testable cleanup.
+- [x] Update consumers and 0.4.0.dev0 migration documentation; run relevant tests.
+- [x] Commit the independently testable cleanup.
 
 ### Task 2: Separate host validation and metadata ownership
 

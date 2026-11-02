@@ -1,7 +1,7 @@
 # vLLM Ascend PyramidKV HUST
 
 **PyramidKV is a standalone, default-off vLLM/Ascend plugin.** Version
-`0.3.0.dev0` owns its scheduler, worker, transaction and metadata adapter. It
+`0.4.0.dev0` owns its scheduler, worker, transaction and metadata adapter. It
 neither installs nor imports `vllm-ascend-kvcompress-hust`, and does not need that
 plugin at runtime. The general entry point is
 `vllm.general_plugins:ascend_pyramidkv`; importing this package or discovering
@@ -45,6 +45,14 @@ variables. Keep `method: pyramidkv` and the existing `method_config` values.
 Old provider names are rejected, not silently translated. Two active KV-cache
 mutation adapters are rejected. Other applications may keep KVCompress installed;
 PyramidKV does not use it.
+
+**Migration from 0.3:** plugin activation and `method_config` are unchanged.
+Version 0.4 removes the retired schema-v1 provider runtime: `get_provider`,
+`PyramidKVContractProposal`, `provider`, `registry`, root `contracts` and
+`legacy_contracts`. Algorithm tooling now imports `PyramidKVConfig`,
+`PyramidKVSelection`, `select_pyramid_indices`, `materialize_pyramid_kv` and
+`select_pyramid_kv` from `vllm_ascend_pyramidkv.algorithm`. There is one runtime:
+the independent adapter. Historical evidence remains linked to its original source.
 
 ## Architecture and semantics
 

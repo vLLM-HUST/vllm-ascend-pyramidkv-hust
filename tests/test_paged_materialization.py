@@ -4,13 +4,13 @@ import pytest
 import torch
 
 from vllm_ascend_pyramidkv.adapter.contracts import LayerCache
+from vllm_ascend_pyramidkv.algorithm import materialize_pyramid_kv
 from vllm_ascend_pyramidkv.method import (
     _copy_selected_kv,
     _gather_paged_prefix,
     _paged_slots,
     _selected_cache_rows,
 )
-from vllm_ascend_pyramidkv.provider import materialize_pyramid_kv
 
 
 @pytest.mark.parametrize("heads", [1, 2, 4])

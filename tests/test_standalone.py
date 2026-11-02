@@ -29,6 +29,22 @@ assert PyramidKVMethod.__module__ == "vllm_ascend_pyramidkv.method"
     assert result.returncode == 0, result.stderr
 
 
+def test_method_import_does_not_probe_host_contracts():
+    result = run_isolated("""
+import torch
+import sys
+from importlib.abc import MetaPathFinder
+class NoHost(MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".")[0] in {"vllm", "vllm_ascend", "vllm_ascend_kvcompress"}:
+            raise AssertionError("algorithm probed a host contract: " + fullname)
+sys.meta_path.insert(0, NoHost())
+from vllm_ascend_pyramidkv.method import PyramidKVMethod
+assert PyramidKVMethod.__module__ == "vllm_ascend_pyramidkv.method"
+""")
+    assert result.returncode == 0, result.stderr
+
+
 def test_disabled_plugin_needs_no_host_or_torch():
     result = run_isolated("""
 import sys
@@ -90,7 +106,9 @@ def test_historical_baseline_contracts_are_normalized_without_shared_import(tmp_
 from vllm_ascend_kvcompress.methods import METHOD_API_VERSION
 from vllm_ascend_kvcompress.methods.base import CompressionResult
 from vllm_ascend_kvcompress.transaction import CompressionPlan
+from vllm_ascend_pyramidkv.provider import PyramidKVAscendConfig
 assert METHOD_API_VERSION == 1
+assert PyramidKVAscendConfig.from_dict({}).window_size == 8
 
 def budget(x):
     return 2 * x - x // 2
@@ -105,8 +123,8 @@ from pathlib import Path
 from importlib.abc import MetaPathFinder
 class NoShared(MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.startswith("vllm_ascend_kvcompress"):
-            raise AssertionError("baseline imported shared adapter")
+        if fullname.startswith("vllm_ascend_kvcompress") or fullname == "vllm_ascend_pyramidkv.provider":
+            raise AssertionError("baseline imported retired runtime")
 sys.meta_path.insert(0, NoShared())
 load = runpy.run_path({str(script)!r})["load_baseline"]
 module = load(Path({str(baseline)!r}))
