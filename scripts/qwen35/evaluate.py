@@ -16,6 +16,7 @@ from collections import Counter
 from pathlib import Path
 
 TASKS = ("narrativeqa", "qasper", "2wikimqa")
+GROUP_KINDS = ("warmup", "boundary", "performance", "capacity", "repeatability")
 
 
 def digest(value: bytes) -> str:
@@ -43,6 +44,9 @@ def qa_f1(prediction: str, answers: list[str]) -> float:
 
 
 def prepare(args: argparse.Namespace) -> None:
+    capacity = args.capacity_concurrency
+    if not capacity or len(set(capacity)) != len(capacity) or any(value not in (1, 2, 4) for value in capacity):
+        raise ValueError("Choose unique capacity concurrency values from 1, 2, 4")
     from transformers import AutoTokenizer
 
     args.output.mkdir(parents=True, exist_ok=False)
@@ -130,7 +134,7 @@ def prepare(args: argparse.Namespace) -> None:
                     3 if concurrency == 1 else 8,
                     length * 100 + concurrency * 1000 + repeat * 10,
                 )
-    for concurrency in (1, 4):
+    for concurrency in capacity:
         cohort(f"capacity-32704-c{concurrency}", "capacity", 32704, 64, concurrency, concurrency, 800000 + concurrency)
     for case in cases:
         case["prompt_tokens"] = len(case["prompt"])
@@ -192,6 +196,9 @@ def stream_request(base: str, case: dict, out: Path) -> dict:
         "stream": True,
         "stream_options": {"include_usage": True},
     }
+    if "cache_salt" in case:
+        payload["cache_salt"] = case["cache_salt"]
+    write_json(out / f"{case['case_id']}.request.json", payload)
     client = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     request = urllib.request.Request(
         base + "/v1/completions", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}
@@ -224,6 +231,8 @@ def stream_request(base: str, case: dict, out: Path) -> dict:
                         result["finish_reason"] = choice["finish_reason"]
         if not usage or usage["prompt_tokens"] != case["prompt_tokens"]:
             raise ValueError(f"Missing or mismatched token usage: {usage}")
+        if case.get("require_uncached") and (usage.get("prompt_tokens_details") or {}).get("cached_tokens") != 0:
+            raise ValueError("Expected explicit zero cached prompt tokens")
         if first is None or last is None:
             raise ValueError("No output text received")
         if case["ignore_eos"] and usage["completion_tokens"] != case["max_tokens"]:
@@ -245,13 +254,57 @@ def stream_request(base: str, case: dict, out: Path) -> dict:
     return result
 
 
+def load_plan(path: Path, group_kinds: list[str] | None, skip_quality: bool) -> tuple[list, list, dict]:
+    manifest_bytes = (path / "manifest.json").read_bytes()
+    manifest = json.loads(manifest_bytes)
+    values = {}
+    for name in ("cases", "groups"):
+        raw = (path / f"{name}.json").read_bytes()
+        if digest(raw) != manifest[f"{name}_sha256"]:
+            raise ValueError(f"Frozen {name} checksum mismatch")
+        values[name] = json.loads(raw)
+    cases, groups = values["cases"], values["groups"]
+    case_ids = [row["case_id"] for row in cases]
+    if len(set(case_ids)) != len(case_ids) or any(not re.fullmatch(r"[A-Za-z0-9_-]+", key) for key in case_ids):
+        raise ValueError("Duplicate or unsafe case IDs")
+    group_names = [row["name"] for row in groups]
+    if len(set(group_names)) != len(group_names):
+        raise ValueError("Duplicate group names")
+    assigned = []
+    lookup = {row["case_id"]: row for row in cases}
+    for group in groups:
+        if group["kind"] not in GROUP_KINDS or group["concurrency"] not in (1, 2, 4) or not group["case_ids"]:
+            raise ValueError("Invalid group kind, concurrency or empty cohort")
+        for key in group["case_ids"]:
+            if key not in lookup or lookup[key]["kind"] != group["kind"]:
+                raise ValueError("Group references missing case or mismatched kind")
+            assigned.append(key)
+    if len(set(assigned)) != len(assigned):
+        raise ValueError("Cases assigned more than once")
+    if group_kinds is not None:
+        missing = set(group_kinds) - {group["kind"] for group in groups}
+        if missing:
+            raise ValueError(f"Requested group kinds absent from plan: {sorted(missing)}")
+        groups = [group for group in groups if group["kind"] in group_kinds]
+    quality = [] if skip_quality else [case for case in cases if case["kind"] == "quality"]
+    if not groups and not quality:
+        raise ValueError("No cases selected")
+    receipt = {
+        "plan_manifest_sha256": digest(manifest_bytes),
+        "plan_manifest": manifest,
+        "group_names": [group["name"] for group in groups],
+        "quality_case_ids": [case["case_id"] for case in quality],
+    }
+    return cases, groups, receipt
+
+
 def run(args: argparse.Namespace) -> None:
+    cases, groups, receipt = load_plan(args.plan, args.group_kinds, args.skip_quality)
     args.output.mkdir(parents=True, exist_ok=False)
     raw = args.output / "requests"
     raw.mkdir()
-    cases = json.loads((args.plan / "cases.json").read_text())
     lookup = {x["case_id"]: x for x in cases}
-    groups = json.loads((args.plan / "groups.json").read_text())
+    write_json(args.output / "execution.json", dict(receipt, arm=args.arm))
     stop = threading.Event()
     phase = {"name": "initial"}
 
@@ -306,7 +359,7 @@ def run(args: argparse.Namespace) -> None:
             if len(good) != len(results):
                 raise RuntimeError(f"Failed requests in {group['name']}; inspect retained evidence")
         if not args.skip_quality:
-            quality_cases = [x for x in cases if x["kind"] == "quality"]
+            quality_cases = [lookup[key] for key in receipt["quality_case_ids"]]
             for index, case in enumerate(quality_cases):
                 phase["name"] = f"quality-{case['task']}"
                 result = stream_request(args.base_url, case, raw)
@@ -345,11 +398,13 @@ if __name__ == "__main__":
     prep.add_argument("--data", type=Path, required=True)
     prep.add_argument("--output", type=Path, required=True)
     prep.add_argument("--samples-per-task", type=int, choices=(50, 100), default=50)
+    prep.add_argument("--capacity-concurrency", nargs="+", type=int, choices=(1, 2, 4), default=[1, 4])
     runner = sub.add_parser("run")
     runner.add_argument("--plan", type=Path, required=True)
     runner.add_argument("--output", type=Path, required=True)
     runner.add_argument("--arm", choices=("baseline", "pyramidkv"), required=True)
     runner.add_argument("--base-url", default="http://127.0.0.1:8000")
     runner.add_argument("--skip-quality", action="store_true")
+    runner.add_argument("--group-kinds", nargs="*", choices=GROUP_KINDS, default=None)
     args = parser.parse_args()
     prepare(args) if args.command == "prepare" else run(args)
