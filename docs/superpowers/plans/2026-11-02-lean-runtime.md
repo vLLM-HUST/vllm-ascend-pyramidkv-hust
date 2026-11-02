@@ -59,7 +59,11 @@ Files: current architecture/migration docs, package/version and validation recei
 outside the source tree.
 
 - [x] Run full suite, host-absent suite, lint, format and wheel/sdist gates.
-- [ ] Verify clean-wheel discovery and live pinned TP2 serving with both metadata paths.
+- [x] Verify clean-wheel discovery and live pinned TP2 serving with both metadata paths.
 - [x] Request fresh whole-branch review and resolve substantive findings.
-- [ ] Publish PR with exact scope, removed API list and validation limitations;
-  verify final CI, integrate and clean the temporary worktree/artifacts.
+- [x] Publish PR with exact scope, removed API list and validation limitations;
+  verify the reviewed code against local gates and remote CI.
+
+Final integration follows the repository merge gate after the documentation-only
+completion update. Then synchronize the canonical checkout/runtime and remove
+the temporary worktree, test services and validation artifacts.
