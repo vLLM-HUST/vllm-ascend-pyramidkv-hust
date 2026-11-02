@@ -1,5 +1,20 @@
 # Provenance
 
+## Independent runtime ownership (0.3)
+
+`adapter/` and its regression tests derive from the Apache-2.0 runtime at
+[vLLM-HUST/vllm-ascend-kvcompress-hust f337858](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/tree/f33785844be5bff7716c9464dd8444ef0b4b05e9).
+The local adaptation removes shared-package imports, external method dispatch,
+TriAttention calibration and scoring kernels. The generic position operation,
+scheduler lifecycle, host bridges and PR33 per-layer metadata implementation
+are maintained here. `method.py` binds local types; the existing `provider.py`
+algorithm is unchanged. See [NOTICE](NOTICE) for Apache/MIT attribution.
+
+The standalone version uses its own general entry point, configuration and
+activation. Earlier shared-host statements below describe the historical
+migration stages, not current dependencies or qualification of this adapter.
+
+
 Source archives:
 
 - [intellistream/vllm-hust-legacy-20260831](https://github.com/intellistream/vllm-hust-legacy-20260831)

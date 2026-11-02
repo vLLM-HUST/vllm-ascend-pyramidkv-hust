@@ -1,5 +1,10 @@
 # Issue #1: paired evidence protocol
 
+> Historical shared-adapter record. For version 0.3 and later, use
+> [standalone installation](install-and-rollback.md) and the
+> [local host contract](host-contract.md). The old dependencies and commands
+> below apply only to their recorded revisions.
+
 This protocol is fixed before inspecting the paired evaluation outputs. It
 targets the remaining quality, capacity, latency, throughput, and HBM evidence
 in [issue #1](https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues/1).

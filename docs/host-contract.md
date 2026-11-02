@@ -1,82 +1,64 @@
-# Required shared-host method contract
+# PyramidKV-owned host contract
 
-The former direct Core and Ascend host Drafts were withdrawn. PyramidKV must
-not patch those source trees or reactivate their private contract. The confirmed
-shared lifecycle owner is `vllm-ascend-kvcompress-hust`, with activation and
-rollback controlled through Extension Manager.
+The integration entry point is `vllm.general_plugins:ascend_pyramidkv`, resolving
+to `vllm_ascend_pyramidkv:register`. Registration is explicit/default-off and
+idempotent. The disabled entry point needs neither vLLM nor PyTorch. The adapter
+uses checked host hooks because the supported vLLM/Ascend pair has no public
+transactional compression API. Those hooks belong to PyramidKV and never call
+or import KVCompress. The local contracts are internal, not a new shared API.
 
-## Existing shared boundary
+```mermaid
+flowchart LR
+    EP[general plugin] --> S[local scheduler]
+    EP --> W[local worker]
+    S -->|private destination plan| W
+    W --> Q[query observation]
+    Q --> M[PyramidKV method]
+    M -->|per-layer retained lengths| W
+    W --> A[Ascend metadata and graph slots]
+    W -->|acknowledgement| S
+```
 
-The shared package documents the external entry-point group
-`vllm_ascend_kvcompress.methods`. Its method API already provides:
+## Ownership
 
-1. model shape and method-owned configuration;
-2. scheduler-visible runtime limits;
-3. allocated full-attention K/V layer bindings;
-4. source and private destination block tables; and
-5. synchronous compression results, including an optional per-layer length
-   result.
+| Module under `vllm_ascend_pyramidkv` | Responsibility |
+| --- | --- |
+| `adapter/config.py` | Direct/Manager activation, strict local config, conflicting mutation guard |
+| `adapter/contracts.py`, `adapter/transaction.py` | Shape, cache, query and result types; pickle-safe private-block plans |
+| `adapter/plugin.py` | Scheduler/runner/attention/slot hooks and lazy worker loading |
+| `adapter/scheduler.py` | Allocation, APC admission, commit barrier, deferred free, abort/preemption |
+| `adapter/worker.py` | Bind/capture/compress/commit, physical offsets, per-layer and MTP metadata |
+| `adapter/host_compat.py`, `adapter/host_worker.py`, `adapter/qwen_gdn_ops.py` | Exact host ABI bridges and missing GDN output operation |
+| `method.py` | Query ring buffers, transaction identity, selected-page materialization |
+| `provider.py` | Original PyramidKV scoring, GQA reduction, pooling and layer budget schedule |
 
-## Accepted query observation
+The owned adapter derives from shared commit
+`f33785844be5bff7716c9464dd8444ef0b4b05e9`; PR33's subsequent documentation commits
+do not change those runtime bytes. There is no TriAttention factory, external
+method discovery, calibration or TriAttention kernel import in this package.
+The generic physical-position subtraction is local PyTorch code.
 
-PyramidKV scores historical keys with the final prefill's trailing query
-window. Shared-host PR #9 added an optional observation contract that:
+## Invariants
 
-1. remains a no-op for methods that do not request it;
-2. declares the trailing query-window length before allocation;
-3. stages only bound full-attention layers across prefill chunks;
-4. binds observations to request and compression-transaction identity;
-5. publishes them only after the complete final-prefill forward and sampling
-   succeed; and
-6. clears state on cancellation, abort, restart, and completed commit.
+- Compression admission remains strictly above the configured prompt threshold.
+  Final-prefill query tails span chunks; APC leaves the required suffix for
+  recomputation. An incomplete or mismatched observation fails closed.
+- Scheduler source blocks remain immutable and may be shared through APC. The
+  worker writes private destination blocks. Scheduler and worker commit only at
+  the acknowledged transaction boundary; asynchronous in-flight blocks are freed
+  after the required barrier. Compacted KV never receives semantic prefix hashes.
+- RoPE and Mamba retain semantic positions. Full attention consumes physical
+  lengths; each layer can retain a different budget. The first target layer's
+  selection materializes the auxiliary MTP cache, as before.
+- Graph slots are allocated before capture and updated in place; query observation
+  runs at the attention custom-op boundary. Synthetic capture rows, empty async
+  steps and rejected draft tokens preserve the original mapping rules.
+- The opt-in batched metadata path owns immutable correction tensors and stable
+  slot storage. Unsupported layouts take the native slot-mapping path. Metadata
+  tensors follow the host's device rather than assuming sequence lengths are NPU.
+- Abort, completion and preemption discard request observations/state. Rebinding
+  the method's cache clears prior query/completion slots; worker reinitialization
+  constructs a fresh provider before binding. Live graph hot swapping is unsupported.
 
-PyramidKV accepts that contract. Earlier chunk staging is necessary to retain a
-window that crosses chunk boundaries; uncommitted observations remain invisible
-to compression.
-
-## Accepted per-layer physical state
-
-PyramidKV assigns different retained lengths to different layers. Shared-host
-PR #10 validates the complete `per_layer_physical_num_tokens` map, commits it
-at the output-acknowledged transaction boundary, and applies each layer's
-anchor to eager decode slots and standard Ascend attention metadata. Uniform
-methods keep their existing path; GDN remains in semantic space.
-
-Merged shared-host PR #13 lets a method declare unequal per-layer state
-before graph capture, allocates stable layer-specific slot buffers, and uses
-the host's layer-keyed FIA task update seam during `FULL_AND_PIECEWISE` replay.
-It also permits a query method to select target-model layers while retaining an
-auxiliary MTP cache in the materialized result. The MTP speculative common
-metadata receives that cache's physical lengths and slots, so rejected draft
-positions are overwritten rather than advancing per-layer state. Unsupported
-graph/speculative/parallel paths remain fail closed.
-
-The PyramidKV package CI pins the merged shared-host contract exactly at
-`a82e08798c10cee8bc0f0468fb0b05def064ae78` (release PR #14). This
-versions the shared method API as `METHOD_API_VERSION = 1` and the package as
-`0.9.0`; PyramidKV requires `>=0.9,<0.10`. Source-based CI does not establish
-availability from the approved package source. Verify the published package
-before merging activation or running release qualification.
-
-## Accepted prefix-cache admission
-
-The public runtime spec declares `required_recompute_tokens`, but the shared
-scheduler now applies it to prefix-cache admission. PyramidKV needs the last
-`window_size` query rows; shared-host PR #12 caps eligible cache hits at
-`prompt_len - required_recompute_tokens`, with a zero lower bound for short
-prompts. It also rejects an external method whose query window exceeds its
-declared recompute requirement and fails closed when APC lookup hooks are
-missing. PyramidKV accepts this contract.
-
-The shared provider must contain no PyramidKV-specific policy. Design
-coordination remains in
-https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/issues/3.
-
-## Target acceptance boundary
-
-Interface acceptance alone is not runtime support. Activation is restricted to
-CANN 9.1 and the official `Qwen/Qwen3.5-35B-A3B` model (display name:
-Qwen3.5-35B), using the exact validated TP=2 profile with APC, MTP=2, async
-scheduling, `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align` enabled. Other
-profiles fail closed. Only full-attention K/V may be compacted; recurrent state
-stays native.
+See [the audit/design](superpowers/specs/2026-11-02-standalone-adapter-design.md),
+[support matrix](support-matrix.md), and [validation protocol](standalone-validation.md).

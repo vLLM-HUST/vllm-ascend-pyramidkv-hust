@@ -8,9 +8,9 @@
     "qualification": "unqualified"
   },
   "lifecycle": {
-    "activation_contract": "See the extension manifest and README; discovery alone does not enable this MOD.",
+    "activation_contract": "Default-off vllm.general_plugins:ascend_pyramidkv; direct VLLM_ASCEND_PYRAMIDKV_ENABLED/config or optional PyramidKV Manager bundle; no KVCompress dependency.",
     "default_enabled": false,
-    "rollback_contract": "Disable the MOD and return to the unmodified host path.",
+    "rollback_contract": "Stop the process, disable PyramidKV and clear direct activation, then start with an uncompressed cache; live unpatching is unsupported.",
     "status": "incubating"
   },
   "metadata_source": {
@@ -37,8 +37,14 @@
   },
   "schema_version": "vllm-hust-mod-metadata-v1",
   "scope": {
-    "mechanism": "kv_compression_provider",
-    "out_of_scope": [],
-    "supported_workloads": []
+    "mechanism": "standalone_kv_compression_plugin",
+    "out_of_scope": [
+      "General model/host compatibility",
+      "Concurrent KV-cache mutation plugins",
+      "Performance promotion from historical shared-adapter receipts"
+    ],
+    "supported_workloads": [
+      "Qwen/Qwen3.5-35B-A3B text BF16 TP2, CANN 9.1, APC/MTP2/async/chunked-prefill/FULL_AND_PIECEWISE/mamba-align; exact host seams required"
+    ]
   }
 }

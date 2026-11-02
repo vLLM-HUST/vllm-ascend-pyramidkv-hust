@@ -1,17 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""PyramidKV Ascend migration package.
-
-The top-level module intentionally imports neither PyTorch nor vLLM and never
-activates the provider. Runtime registration remains blocked until exact-stack
-serving and rollback validation is complete.
-"""
+"""Standalone PyramidKV plugin with lazy, default-off host activation."""
 
 from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["PyramidKVContractProposal", "get_provider"]
-__version__ = "0.2.0.dev0"
+__all__ = ["PyramidKVContractProposal", "get_provider", "register"]
+__version__ = "0.3.0.dev0"
 
 
 class PyramidKVContractProposal:
@@ -29,3 +24,15 @@ def get_provider(config: Any) -> Any:
     )
 
     return get_kv_cache_compression_provider(config)
+
+
+def register() -> None:
+    """vLLM general-plugin entry point; disabled discovery needs no host imports."""
+    from .adapter.config import assert_no_conflicting_adapter, extension_enabled
+
+    if not extension_enabled():
+        return
+    assert_no_conflicting_adapter()
+    from .adapter.plugin import register as activate
+
+    activate()

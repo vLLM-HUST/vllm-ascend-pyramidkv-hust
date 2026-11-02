@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "provider": "ascend_kvcompress",
+  "provider": "ascend_pyramidkv",
   "method": "pyramidkv",
   "method_config": {
     "max_capacity_prompt": 1368,

@@ -1,5 +1,10 @@
 # Qwen3.5 serving smoke on a prepared Ascend host
 
+> Historical shared-adapter record. For version 0.3 and later, use
+> [standalone installation](install-and-rollback.md) and the
+> [local host contract](host-contract.md). The old dependencies and commands
+> below apply only to their recorded revisions.
+
 The [complete historical smoke report](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/pyramid-mixed/snapshot/docs/qwen35-serving-smoke.md)
 retains the original request counts, compression/cache observations, exact versions and qualification
 limits. These are functional observations, not quality, capacity or performance qualification.
