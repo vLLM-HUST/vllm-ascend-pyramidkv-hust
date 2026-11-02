@@ -1,13 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
-"""External PyramidKV method for the shared Ascend compression adapter.
-
-The shared host now provides prefix-cache recompute admission for
-query-observing methods. This module is registered through the shared adapter's
-public method entry-point group, without patching host classes. Extension
-Manager activation is limited by exact host checks to the qualified
-CANN 9.1/Qwen3.5 serving profile.
-"""
+"""PyramidKV selection and materialization behind the local Ascend adapter."""
 
 from __future__ import annotations
 
@@ -16,8 +9,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import torch
-from vllm_ascend_kvcompress.methods import METHOD_API_VERSION
-from vllm_ascend_kvcompress.methods.base import (
+
+from vllm_ascend_pyramidkv.adapter.contracts import (
     CompressionRequest,
     CompressionResult,
     KVCompressionMethod,
@@ -27,24 +20,19 @@ from vllm_ascend_kvcompress.methods.base import (
     QueryBatchSpan,
     QueryObservation,
 )
-from vllm_ascend_kvcompress.transaction import CompressionPlan
-
+from vllm_ascend_pyramidkv.adapter.transaction import CompressionPlan
 from vllm_ascend_pyramidkv.provider import (
     PyramidKVAscendConfig,
     select_pyramid_indices,
 )
 
 METHOD_NAME = "pyramidkv"
-REQUIRED_METHOD_API_VERSION = 1
 ASCEND_CACHE_BLOCK_SIZE = 128
 QWEN35_ATTENTION_BLOCK_SIZE = 2048
 TARGET_MODEL_ID = "Qwen/Qwen3.5-35B-A3B"
 TARGET_MODEL_DISPLAY_NAME = "Qwen3.5-35B"
 QWEN35_MODEL_TYPES = frozenset({"qwen3_5_moe_text"})
 QWEN35_FULL_ATTENTION_LAYERS = tuple(range(3, 40, 4))
-
-if METHOD_API_VERSION != REQUIRED_METHOD_API_VERSION:
-    raise RuntimeError(f"PyramidKV requires vllm-ascend-kvcompress-hust method API v1; found v{METHOD_API_VERSION}")
 
 
 @dataclass(frozen=True)
@@ -119,7 +107,7 @@ def _copy_selected_kv(layer: LayerCache, source_rows: torch.Tensor, destination_
 
 
 class PyramidKVMethod(KVCompressionMethod):
-    """PyramidKV behind the public ``vllm_ascend_kvcompress`` method API."""
+    """PyramidKV behind the locally owned method contract."""
 
     def __init__(
         self,
@@ -152,7 +140,7 @@ class PyramidKVMethod(KVCompressionMethod):
     def runtime_spec(self) -> MethodRuntimeSpec:
         return MethodRuntimeSpec(
             requires_private_destination=True,
-            # The shared adapter compresses at ``>= threshold`` while the
+            # The scheduler compresses at ``>= threshold`` while the
             # recovered contract admits only prompts strictly above the limit.
             compression_threshold_tokens=(self.config.min_compression_prompt_tokens + 1),
             required_recompute_tokens=self.config.window_size,
@@ -284,6 +272,9 @@ class PyramidKVMethod(KVCompressionMethod):
         self.materialization_caches = layer_caches
         self.auxiliary_mtp_caches = auxiliary
         self._layer_slots = {layer.layer_index: index for index, layer in enumerate(target)}
+        self._request_slots.clear()
+        self._query_lengths.clear()
+        self._completed.clear()
         self._free_slots = list(reversed(range(max_num_reqs)))
 
     def capture_query(

@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 import torch
-from vllm_ascend_kvcompress.methods import METHOD_API_VERSION
-from vllm_ascend_kvcompress.methods.base import (
+
+from vllm_ascend_pyramidkv.adapter.contracts import (
     CompressionRequest,
     KVCompressionMethod,
     LayerCache,
@@ -13,21 +13,14 @@ from vllm_ascend_kvcompress.methods.base import (
     QueryBatchSpan,
     QueryObservation,
 )
-from vllm_ascend_kvcompress.transaction import CompressionPlan
-
+from vllm_ascend_pyramidkv.adapter.transaction import CompressionPlan
 from vllm_ascend_pyramidkv.method import (
     QWEN35_MODEL_TYPES,
-    REQUIRED_METHOD_API_VERSION,
     TARGET_MODEL_DISPLAY_NAME,
     TARGET_MODEL_ID,
     PyramidKVMethod,
     create_pyramidkv_method,
 )
-
-
-def test_shared_host_method_api_is_exact() -> None:
-    assert REQUIRED_METHOD_API_VERSION == 1
-    assert METHOD_API_VERSION == REQUIRED_METHOD_API_VERSION
 
 
 def _options() -> dict[str, object]:
@@ -300,3 +293,18 @@ def test_target_compatibility_is_explicit_and_fail_closed(monkeypatch) -> None:
 
     assert reasons == ()
     assert not any("required_recompute_tokens" in reason for reason in reasons)
+
+
+def test_rebinding_method_discards_queries_from_previous_cache():
+    method, caches = _bound_method()
+    for layer in caches:
+        method.capture_query(layer, torch.randn(4, 2, 8), (QueryBatchSpan("old", 0, 4),))
+    plan = CompressionPlan(4097, 2048, tuple(range(33)), tuple(range(33, 49)))
+    method.complete_query_observation(QueryObservation("old", plan, 4097, 4, (3, 7)))
+    method.bind_model_runner(SimpleNamespace(max_num_reqs=2, device=torch.device("cpu")), caches)
+    with pytest.raises(RuntimeError, match="no captured query"):
+        method.complete_query_observation(QueryObservation("old", plan, 4097, 4, (3, 7)))
+    for request_id in ("new-1", "new-2"):
+        for layer in caches:
+            method.capture_query(layer, torch.randn(4, 2, 8), (QueryBatchSpan(request_id, 0, 4),))
+    assert len(set(method._request_slots.values())) == 2

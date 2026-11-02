@@ -1,84 +1,33 @@
-# Support matrix
+# Standalone support boundary
 
-This matrix separates the recovered historical profile from the narrowly
-qualified current runtime profile. CPU coverage, a provider-only NPU oracle,
-and exact-stack functional serving evidence are available. The current paired
-evaluation adds bounded quality, capacity, performance, and HBM measurements;
-it does not establish a general performance benefit.
+The independent adapter preserves the existing narrow compatibility gate.
+Distribution independence does not broaden model or host support.
 
-## Release-validation target
-
-| Dimension | Required value |
+| Dimension | Accepted target |
 | --- | --- |
-| Display name | Qwen3.5-35B |
-| Exact model ID | `Qwen/Qwen3.5-35B-A3B` |
-| Model family | Qwen3.5 hybrid MoE (`qwen3_5_moe_text`) |
-| Dtype | BF16 |
-| Runtime | CANN 9.1, Ascend, TP=2 |
-| Required features | APC, MTP=2, async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, `mamba_cache_mode=align` |
+| Model | Official `Qwen/Qwen3.5-35B-A3B`, text path |
+| Geometry | 40 layers; full attention at 3,7,…,39; Q/KV heads 16/2; head dim 256; rotary dim 64 |
+| Precision and parallelism | BF16, TP=2, no quantization, no PP/DP/context parallelism |
+| Hardware/runtime | Ascend 910B2 with prepared CANN 9.1 and matched torch-npu |
+| Scheduling | APC, chunked prefill, async scheduling |
+| Speculation | Qwen3.5 MTP2, explicit experimental gate, one auxiliary MTP cache |
+| Graph | `FULL_AND_PIECEWISE`, checked layer-aware FIA replay |
+| Cache | Standard Ascend attention, 128-token kernel pages, supported logical pages, Mamba `align` |
+| Activation | Independent general plugin; direct environment or optional Manager |
 
-The Qwen2.5-14B result below is retained only as historical/provider-only
-evidence. It must not be reported as the release-validation model or used to
-claim that the current plugin is runnable.
+The reproduced source pair is vLLM
+`d0f22d2bda562156e4dbf433ce645e1769b4f804` and Ascend
+`03766ac696fde5ab1980d80ca0b8543d3580c989`, with native operators prepared as in
+the [historical host preparation](qwen35-serving-smoke.md). Other releases must
+pass host seam and native serving checks; version metadata alone is insufficient.
+The offline selection/provider APIs and small synthetic fixtures cover more
+geometries but do not imply serving support for them.
 
-## Historical baseline
+The migrated batched metadata path is opt-in. Its native fallback supports
+layouts excluded by that optimization within the accepted host contract; it does
+not make an unsupported model/cache configuration acceptable.
 
-| Dimension | Legacy validated values |
-| --- | --- |
-| Device | Ascend 910B2 |
-| CANN | 8.5.1 eager; 9.0 eager and validated graph modes |
-| Model runner | vLLM V1 |
-| Models | Llama-3-8B profile and Qwen2.5-14B profile |
-| Dtype | BF16 model and KV cache |
-| Attention | Dense full attention, `AscendAttentionBackend` |
-| Block size | 128 |
-| Parallelism | TP=1, PP=1, PCP=1, DCP=1 |
-| Scheduling | Async scheduling on/off; balance scheduling off; DBO off |
-| Prefill | Unchunked; chunked on CANN 9.0 |
-| Prefix caching | On/off with 128-token hash blocks |
-| Graph | `NONE`, `PIECEWISE`, `FULL_DECODE_ONLY` within the recorded restrictions |
-
-The legacy default configuration used a compressed capacity of 512 tokens, an
-admission threshold of 4096 tokens, an eight-token query window, max pooling,
-kernel size seven, and beta 20. Prompts at or below 4096 remained on the
-ordinary path; admission began above that boundary.
-
-## Explicitly unsupported in the legacy baseline
-
-- devices other than Ascend 910B2;
-- unlisted model geometries or architectures;
-- quantized models or quantized KV cache;
-- sliding-window attention, speculative decoding, KV transfer, or KV offload;
-- TP, PP, PCP, or DCP greater than one;
-- balance scheduling, dual-batch overlap, or KNorm;
-- paged-attention graph shapes, `FULL`, or `FULL_AND_PIECEWISE` graph modes;
-- chunked prefill on CANN 8.5.1.
-
-## Current repository status
-
-| Capability | Current status |
-| --- | --- |
-| Package installation and metadata inspection | Available |
-| Offline CPU algorithm and compatibility tests | Available |
-| Historical Qwen2.5-14B grouped-GQA NPU oracle | Passed on Ascend 910B2, CANN 9.0, torch-npu 2.9; not release evidence |
-| Extension descriptor activation | Active Manifest 0.3 external method entry point; explicit shared-owner dependency and exclusive method-name claim |
-| Former direct Core/Ascend host integration | Withdrawn; not a contribution path |
-| Shared lifecycle owner | Confirmed: `vllm-ascend-kvcompress-hust` |
-| Query observation interface | Accepted and merged in shared-host PR #9 |
-| Per-layer physical-state interface | Eager stage merged in PR #10; MTP2/FULL_AND_PIECEWISE stage merged in shared-host PR #13 |
-| External method implementation | Registered; covers target layers plus auxiliary MTP cache |
-| Prefix-cache recompute admission | Accepted and merged in shared-host PR #12; Query/APC mismatches fail closed |
-| CANN 9.1 + `Qwen/Qwen3.5-35B-A3B` target | Functional serving smoke passed on Ascend 910B2 |
-| TP2/APC/MTP2/async/FULL_AND_PIECEWISE/align target | Functional 5007-token request passed; 5007-to-2048 compression committed on both TP workers |
-| Candidate-wheel Manager lifecycle and SWE C4/60s | Passed: 21 successful requests, 10 matching compression transactions on both TP ranks, prefix hits, real MTP acceptance, rollback and device release; see [receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-09-30-candidate-qualification.json) |
-| October source-install Qwen3.5 smoke | Three successful requests; two 5312-to-2048 commits on both TP ranks, APC hit, and MTP acceptance. Direct activation passed; pinned Manager joint launch conflicts on `vllm.environment`. See [runbook](qwen35-serving-smoke.md) |
-| October Manager follow-up | Passed on pinned Manager `d22088cf`: joint launch from saved configuration, expected outputs, two matched TP compression transactions, APC and MTP counters. The earlier Manager conflict is resolved; see [current runbook](qwen35-managed-launch.md). This is functional evidence, not a new performance result. |
-| Device-rebind recovery | Merged PR #13 source restored on physical NPU 6/7: three requests passed, two 5312-to-2048 transactions matched both TP ranks, APC hit 2048, MTP draft/accepted deltas 14/10. New 32 CPU / 256 GiB allocation is functional evidence only; see [receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-11-runtime-resource-recheck/README.md). |
-| Published 0.9.0 installation acceptance | Public shared wheel is downloadable, but differs from the qualified source and lacks its graph-slot fix. Corrected release selection/publication and artifact-specific validation remain pending; see [static package audit](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-public-package-audit/README.md). |
-| Published 0.10.0 installation acceptance | Download/hash and Manifest 0.3/graph-fix checks passed. Released wheel fails the legacy router import probe; shared PR #23 supplies a candidate ABI guard. See [artifact/candidate receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-19-shared-010-acceptance/README.md); published-package runtime acceptance remains open. |
-| FULL-graph per-layer cache-write fix | Shared PR #19 merged as `023170af0213cb23576bdc64d5606c60744effb7`; evaluated host-compatible source remains pinned to `19f322130e1b3841da953b1b421bcf3259e9b8dc` |
-| Current-source quality regression | Explicit 1368/beta-2 profile passed separate development and holdout gates; mean F1 losses 0.59/0.26 points. Original 512/beta-20 profile failed development gate |
-| Current-source capacity | Both arms completed 32704 input + 64 output tokens at concurrency 1 and 4; not a maximum-capacity or capacity-improvement claim |
-| Current-source paired performance/HBM | Measurements complete: 8K/24K throughput 2.6%–10.3% lower, peak HBM about 0.4 GiB higher, peak KV-pool usage 29.12% → 21.70%; see [full receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md) |
-| Selected-page operator optimization (PR #13) | Accepted for local operator improvement only; about 36% lower isolated method latency. Four fresh-process ABBA arms complete; 548 successful requests. Compression-exercising pooled throughput is 0.24%–0.45% lower than the original method, HBM essentially unchanged. No end-to-end gain; see [result boundary](selected-page-serving-result.md). |
-| Alpha release | Pending quality, capacity, and performance evidence review; measurements available, long-input throughput regression remains, functional rollback passed |
+Historical shared-adapter quality, capacity, performance and HBM receipts remain
+in [benchmark originals](benchmark-originals.md). They are not measurements of
+the independent adapter. Fresh functional validation is also not a replacement
+for a full quality/performance qualification or authorization for broad promotion.

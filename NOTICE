@@ -27,3 +27,17 @@ include:
 No Hugging Face model patches, CUDA kernels, Triton kernels, or custom kernels
 from those repositories are included in this package. Referenced projects keep
 their own copyright and license terms.
+
+The standalone adapter in src/vllm_ascend_pyramidkv/adapter and its lifecycle
+regression tests are adapted from vLLM-HUST/vllm-ascend-kvcompress-hust,
+commit f33785844be5bff7716c9464dd8444ef0b4b05e9, licensed Apache-2.0.
+Copyright HUST CGCL, Sichen Liu and the contributing vLLM-HUST authors.
+The local adaptation binds PyramidKV directly and excludes TriAttention's
+method registry, calibration, scoring and compression kernels.
+
+The plugin-owned Qwen GDN output Triton kernel is adapted from the
+vLLM-Ascend-HUST flash-linear-attention-derived chunk output kernel.
+Copyright (c) 2023-2025 Songlin Yang and Yu Zhang and vLLM contributors.
+The original MIT notice is retained in LICENSES/flash-linear-attention-MIT.txt.
+This supplies missing Qwen GDN registration only; no AscendC/Catlass binaries
+are redistributed.

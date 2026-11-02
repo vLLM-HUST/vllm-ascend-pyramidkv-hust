@@ -2,8 +2,8 @@
 
 import pytest
 import torch
-from vllm_ascend_kvcompress.methods.base import LayerCache
 
+from vllm_ascend_pyramidkv.adapter.contracts import LayerCache
 from vllm_ascend_pyramidkv.method import (
     _copy_selected_kv,
     _gather_paged_prefix,

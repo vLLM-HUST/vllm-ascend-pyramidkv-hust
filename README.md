@@ -1,168 +1,105 @@
 # vLLM Ascend PyramidKV HUST
 
-Owner-maintained extraction of the PyramidKV provider work preserved in the
-archived vLLM-HUST and vLLM-Ascend-HUST repositories.
+**PyramidKV is a standalone, default-off vLLM/Ascend plugin.** Version
+`0.3.0.dev0` owns its scheduler, worker, transaction and metadata adapter. It
+neither installs nor imports `vllm-ascend-kvcompress-hust`, and does not need that
+plugin at runtime. The general entry point is
+`vllm.general_plugins:ascend_pyramidkv`; importing this package or discovering
+its disabled entry point does not import PyTorch or vLLM.
 
-**Current status: active external method with an exact-stack functional
-qualification and paired evaluation evidence. The explicit 1368/beta-2 profile
-passes the recorded quality gates; performance promotion remains pending.**
+The serving compatibility target remains **Qwen/Qwen3.5-35B-A3B**, BF16, TP=2,
+CANN 9.1, APC, MTP2, async scheduling, chunked prefill,
+`FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. Unsupported model/cache/host
+seams fail closed. A manifest version range is a discovery filter, not a promise
+that every vLLM/Ascend combination works. See the [support matrix](docs/support-matrix.md).
 
-The package is discoverable as `org.vllm-hust.ascend-pyramidkv` and publishes
-the `pyramidkv` method through the shared adapter's
-`vllm_ascend_kvcompress.methods` entry-point group. The manifest carrier is
-active. Manifest 0.3 declares the shared adapter as an explicit Bundle
-dependency and claims the PyramidKV method name exclusively, so ECPA rejects
-missing/disabled/incompatible owners and duplicate registrations before host
-startup. Importing the top-level package never patches or activates vLLM.
+## Install and activate
 
-The release-validation model is **Qwen3.5-35B**, using the official model ID
-`Qwen/Qwen3.5-35B-A3B`. The package also retains the earlier Qwen2.5-14B
-grouped-GQA device oracle as historical provider-only evidence; that result is
-not a substitute for Qwen3.5 serving validation.
-
-## Five-primary-dataset program
-
-The [issue #8 applicability matrix](docs/five-dataset-program.md) records the five primary datasets and
-links the canonical benchmark adapter/evidence in
-[benchmark PR #258](https://github.com/vLLM-HUST/vllm-hust-benchmark/pull/258). MMLU-Pro is
-`not-exercised` under the frozen five-shot profile: all test prompts fall below the 4,096-token
-compression gate. FrontierScience now has candidate solver/grader code; HLE, SWE and Terminal-Bench have
-complete source audits, with SWE/Terminal image digests verified. Their remaining judge, rights,
-multimodal and sandbox requirements are recorded in the matrix. The named
-70-task B0/B1 subset scores 55/70 (78.57%) in both arms with identical outputs: a compatibility
-check, with no optimization claim.
-
-## Host ownership and current interface gap
-
-The former host-side Drafts in `vllm-hust` and `vllm-ascend-hust` were
-withdrawn. The confirmed shared lifecycle owner is
-[`vllm-ascend-kvcompress-hust`](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust),
-whose documented external method namespace is
-`vllm_ascend_kvcompress.methods`. Its merged
-[PR #9](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/9)
-provides the accepted final-prefill query-window observation contract.
-
-Merged [PR #10](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/10)
-adds eager consumption of method-returned per-layer physical lengths. Merged
-[PR #12](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/12)
-now consumes `required_recompute_tokens` during prefix-cache admission and
-fails closed when Query/APC contracts or host lookup seams are inconsistent.
-Merged [PR #13](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/13)
-adds predeclared, address-stable per-layer
-metadata for `FULL_AND_PIECEWISE`, layer-scoped Query observation, and an MTP2
-speculative-common metadata view with draft rollback safety. Follow-up fixes
-cover synthetic FULL capture batches, graph-replay query observation, and
-empty async execution steps.
-
-The registered `PyramidKVMethod` implementation targets the public contracts
-from merged shared-host PR #13 and requires shared-host method API v1,
-published by the 0.9 release line. Its
-CPU tests cover chunk-spanning query capture, transaction identity, paged
-materialization, unequal per-layer results, auxiliary MTP cache materialization,
-and graph-stable metadata. The combined APC, exact Qwen3.5 MTP2, async,
-chunked-prefill, and `FULL_AND_PIECEWISE` profile completed a 5007-token
-functional serving request on TP=2 Ascend 910B2 with CANN 9.1; the transaction
-compressed the full-attention KV state to 2048 tokens and completed decode.
-
-Longer task evaluation subsequently exposed a FULL-graph cache-write bug in
-the shared adapter: capture retained common slot addresses while replay updated
-per-layer buffers. The installation below pins the host-compatible fix from
-[shared PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19).
-The [paired evaluation receipt](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
-preserves the initial failure, corrective evaluation, and limits of the result.
-A short HTTP-success smoke alone did not detect this decoding failure.
-
-The corrected 409-request-per-arm run passed separate 150-example development
-and holdout QA-F1 gates (mean losses 0.59 and 0.26 points). Both arms completed
-32K-context requests at concurrency 1 and 4. Compressed long-input throughput
-was 2.6%–10.3% lower, and peak device HBM was about 0.4 GiB higher despite
-lower active KV-pool usage. These results support the stated functional and
-quality scope, not a general speedup or device-memory-saving claim. The original
-512/beta-20 profile did not pass the development quality gate.
-
-## Inspect and enable
+Provision a matched vLLM, vLLM-Ascend, torch/torch-npu and CANN stack first.
+The wheel intentionally does not ask pip to replace hardware-specific host
+packages. No KVCompress package or Extension Manager is needed for direct use:
 
 ```bash
-python -m pip install \
-  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"
-python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
-python -m pip install --no-deps .
-vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
+python -m pip install .
+export VLLM_PLUGINS=ascend,ascend_model,ascend_model_loader,ascend_kv_connector,ascend_pyramidkv
+export VLLM_ASCEND_PYRAMIDKV_ENABLED=1
+export VLLM_ASCEND_PYRAMIDKV_CONFIG="$PWD/scripts/qwen35/pyramidkv-aligned.json"
+export VLLM_ASCEND_PYRAMIDKV_EXPERIMENTAL_MTP2=1
+# Inside the prepared host environment:
+export MODEL_PATH=/path/to/Qwen3.5-35B-A3B
+PYRAMIDKV_CONFIG="$VLLM_ASCEND_PYRAMIDKV_CONFIG" bash scripts/qwen35/serve.sh
 ```
 
-Inspection must report an active `vllm_ascend_kvcompress.methods:pyramidkv`
-implementation. Enable both the shared lifecycle owner and this method bundle:
+The launcher explicitly enables the plugin; library discovery alone does not.
+The launcher retains the historical `pyramidkv.json` smoke defaults. Select
+`pyramidkv-aligned.json` explicitly to use the 1368/beta-2 configuration. It uses
+an included worker for the pinned host's Mamba ABI bridge; it no longer requires
+the separate dev-hub worker helpers. A matched native host can override
+`PYRAMIDKV_WORKER_CLS`. See [installation and rollback](docs/install-and-rollback.md)
+for host preparation, direct configuration and the optional Manager path.
+
+**Migration from 0.2:** restart the process; disable the shared KVCompress
+bundle/environment; install this wheel; change the config provider to
+`ascend_pyramidkv`; select the new general plugin and `VLLM_ASCEND_PYRAMIDKV_*`
+variables. Keep `method: pyramidkv` and the existing `method_config` values.
+Old provider names are rejected, not silently translated. Two active KV-cache
+mutation adapters are rejected. Other applications may keep KVCompress installed;
+PyramidKV does not use it.
+
+## Architecture and semantics
+
+The local [adapter contract](docs/host-contract.md) covers private destination
+allocation, immutable APC source blocks, query observation across prefill chunks,
+acknowledged worker commits, deferred release, abort/preemption, separate semantic
+RoPE/Mamba and physical attention lengths, layer-specific FULL graph slots and
+MTP draft rollback. The existing GQA score aggregation, pooling, PyramidKV layer
+budgets, strict prompt threshold, top-k order, trailing window and selected-page
+K/V materialization are retained.
+
+`VLLM_ASCEND_PYRAMIDKV_BATCHED_METADATA=1` opts into the migrated PR33 metadata
+optimization. It preserves captured slot addresses and uses a native fallback
+when the layout is unsupported. It remains off by default; it is not a speedup
+claim. The [dependency audit and design](docs/superpowers/specs/2026-11-02-standalone-adapter-design.md)
+records the source snapshot and excluded dependencies. [NOTICE](NOTICE) retains
+Apache-2.0/MIT attribution for the owned runtime.
+
+## Verification
 
 ```bash
-vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
-vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
+# Use the host's matched torch; do not replace it with a generic wheel.
+python -m pip install -e '.[test]' build
+python scripts/fetch_benchmark_originals.py /tmp/pyramidkv-originals
+VLLM_HUST_BENCHMARK_ORIGINALS=/tmp/pyramidkv-originals OMP_NUM_THREADS=2 pytest -q
+ruff check .
+ruff format --check .
+python -m build
+# In a clean environment with the built wheel installed:
+python scripts/check_standalone_install.py
+# On the prepared Ascend host:
+ASCEND_RT_VISIBLE_DEVICES=0 PYRAMIDKV_RUN_NPU_TESTS=1 pytest -q tests/npu
 ```
 
-ECPA intentionally refuses the second command when the shared owner is not
-installed, version-compatible, and already enabled. Enabling this Bundle
-registers the method; selecting `pyramidkv` and its method configuration still
-belongs to the shared adapter's saved configuration.
+The ordinary suite runs metadata/algorithm tests on CPU; tests needing the actual
+host skip when it is absent. Device tests are opt-in. The NPU metadata oracle
+compares integer lengths and slots against the native Ascend BlockTable kernel,
+including CPU/NPU metadata, reordered batches, mixed compressed rows and stable
+storage. The [validation protocol](docs/standalone-validation.md) also requires
+fresh installed-wheel and serving checks. Historical receipts do not qualify
+this revision, and no new quality, throughput or HBM benefit is claimed here.
 
-For standalone provider tests, install the test extra in an environment with a
-host-compatible PyTorch build:
+## Historical evidence and ongoing evaluation
 
-```bash
-python -m pip install -e ".[test]"
-pytest -q
-```
+The old shared-adapter quality and performance experiments retain their exact
+versions and limitations in the [canonical benchmark originals](docs/benchmark-originals.md).
+The [five-primary-dataset program](docs/five-dataset-program.md),
+[evaluation protocol](docs/issue-1-evaluation-protocol.md),
+[experimental protocols](docs/benchmark/README.md),
+[fixed-budget reproduction](docs/runtime-performance-boundary.md),
+[selected-page materialization](docs/selected-page-materialization.md),
+[historical serving smoke](docs/qwen35-serving-smoke.md) and
+[historical joint Manager launch](docs/qwen35-managed-launch.md) remain available.
+They must not be read as current installation instructions or as measurements
+of the independent adapter.
 
-On an Ascend test host, run the opt-in grouped-GQA device oracle with:
-
-```bash
-ASCEND_RT_VISIBLE_DEVICES=0 PYRAMIDKV_RUN_NPU_TESTS=1 \
-  pytest -q tests/npu/test_selection.py
-```
-
-Do not install a generic PyTorch wheel over an existing torch-npu environment.
-Use the matched PyTorch supplied by the Ascend host and install this package
-with `--no-deps` when appropriate.
-
-## Current boundary
-
-- The package registers only the method entry point; the shared adapter owns
-  the `vllm.general_plugins` host integration.
-- No import-time monkey patching is performed.
-- Runtime compatibility fails closed outside the exact qualified model,
-  dtype, TP, CANN, scheduling, MTP, cache, and Graph profile.
-- Historical NPU, LongBench, and performance results are supporting evidence,
-  not measurements of this repository's current head.
-- The current provider head has a real-device Qwen 40-to-8 GQA selection
-  oracle on Ascend 910B2/CANN 9.0; this does not replace serving validation and
-  will not be rerun as a substitute.
-- The qualified functional target is CANN 9.1, official model
-  `Qwen/Qwen3.5-35B-A3B` (display name: Qwen3.5-35B), BF16, TP=2, APC, MTP=2,
-  async scheduling, chunked prefill, `FULL_AND_PIECEWISE`, and
-  `mamba_cache_mode=align`.
-- Current-source quality, capacity, latency, throughput, and HBM measurements
-  are available for the explicit 1368/beta-2 profile. Release promotion and
-  shared graph-fix review remain pending; the measured long-input throughput
-  regression needs optimization before a positive performance claim.
-
-See:
-
-- [provenance](PROVENANCE.md)
-- [Verified benchmark originals](docs/benchmark-originals.md)
-- [maintainers](MAINTAINERS.md)
-- [support matrix](docs/support-matrix.md)
-- [host contract](docs/host-contract.md)
-- [install and rollback](docs/install-and-rollback.md)
-- [Qwen3.5 source-install serving smoke and runbook](docs/qwen35-serving-smoke.md)
-- [Current Qwen3.5 joint Manager launch](docs/qwen35-managed-launch.md)
-- [Paired evaluation protocol and reproduction](docs/issue-1-evaluation-protocol.md)
-- [Current paired quality, capacity, performance, and HBM evidence](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/9b81690f767aca56524ec6651535a9b8d484a4c3/archive/mod-git-20261022/pyramidkv-website-source/snapshot/evidence/current/2026-10-09-paired-evaluation/README.md)
-- [legacy evidence inventory](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/README.md)
-- [public historical Ascend 910B2 result](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/pyramid-legacy/snapshot/evidence/legacy/2026-08-13-ascend910b2/README.md)
-- [current provider-only Ascend 910B2 oracle](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-09-03-provider-npu/README.md)
-
-## Canonical MOD metadata
-
-Repository identity, directly responsible maintainers, advisor status, default-off
-activation, rollback, scope, and evidence qualification are recorded in
-[`MOD_METADATA.json`](MOD_METADATA.json). `advisor_status: unknown` is not the
-same as confirmed `none`. Performance statements remain limited to the workloads
-and evidence labels recorded there; they are not general online claims.
+See also [provenance](PROVENANCE.md), [maintainers](MAINTAINERS.md), and
+[MOD metadata](MOD_METADATA.json). Performance promotion requires new exact-revision qualification.

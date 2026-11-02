@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,11 +17,8 @@ def test_provenance_records_exact_legacy_anchors() -> None:
         assert revision in provenance
 
 
-def test_docs_separate_functional_qualification_from_release_promotion() -> None:
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    matrix = (ROOT / "docs" / "support-matrix.md").read_text(encoding="utf-8")
-
-    assert "exact-stack functional" in readme
-    assert "required_recompute_tokens" in readme
-    assert "MTP2/FULL_AND_PIECEWISE stage merged in shared-host PR #13" in matrix
-    assert "Alpha release | Pending quality, capacity, and performance evidence" in matrix
+def test_functional_checks_do_not_promote_performance_qualification() -> None:
+    metadata = json.loads((ROOT / "MOD_METADATA.json").read_text(encoding="utf-8"))
+    assert metadata["evidence"]["qualification"] == "unqualified"
+    assert metadata["evidence"]["performance_claims"] == []
+    assert metadata["lifecycle"]["default_enabled"] is False

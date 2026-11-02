@@ -1,5 +1,10 @@
 # Shared-backend contract preparation for issue #8
 
+> Historical shared-adapter record. For version 0.3 and later, use
+> [standalone installation](install-and-rollback.md) and the
+> [local host contract](host-contract.md). The old dependencies and commands
+> below apply only to their recorded revisions.
+
 Status: on 2026-10-28 (Asia/Shanghai), the user approved preparing a separately named SWE V1 /
 Terminal ARM64 contract and its adapters. Execution still requires the concrete plan and resource
 handoff below. No completed replacement contract or new measurement is asserted by this document.

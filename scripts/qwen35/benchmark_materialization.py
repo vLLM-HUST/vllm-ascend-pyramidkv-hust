@@ -3,11 +3,14 @@
 Pass an immutable checkout of the previous method.py as --baseline-source.
 The baseline and candidate consume identical queries/pages in one process;
 whole-cache equality includes source pages, destination padding, and MTP.
+Historical shared contract imports are normalized to local value types only;
+this compares method algorithms, not the historical shared runtime.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -18,24 +21,55 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import torch
-import torch_npu  # noqa: F401
-from vllm_ascend_kvcompress.methods.base import (
+
+import vllm_ascend_pyramidkv.method as candidate
+from vllm_ascend_pyramidkv.adapter.contracts import (
     CompressionRequest,
     LayerCache,
     ModelShape,
     QueryBatchSpan,
     QueryObservation,
 )
-from vllm_ascend_kvcompress.transaction import CompressionPlan
+from vllm_ascend_pyramidkv.adapter.transaction import CompressionPlan
 
-import vllm_ascend_pyramidkv.method as candidate
+
+def load_baseline(path: Path):
+    """Load trusted historical source using the local, equivalent value types.
+
+    Only the three former contract imports are normalized. Algorithm statements
+    are left intact; the diagnostic records the original file hash and that this
+    is a local-contract comparison, not an execution of the old shared adapter.
+    """
+    tree = ast.parse(path.read_text(), filename=str(path))
+    imports = {
+        "vllm_ascend_kvcompress.methods.base": "vllm_ascend_pyramidkv.adapter.contracts",
+        "vllm_ascend_kvcompress.transaction": "vllm_ascend_pyramidkv.adapter.transaction",
+    }
+    for index, node in enumerate(tree.body):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.module in imports:
+            node.module = imports[node.module]
+        elif node.module == "vllm_ascend_kvcompress.methods":
+            if len(node.names) != 1 or node.names[0].name != "METHOD_API_VERSION":
+                raise ValueError("baseline imports an unsupported shared method API")
+            replacement = ast.Assign(
+                targets=[ast.Name(id=node.names[0].asname or "METHOD_API_VERSION", ctx=ast.Store())],
+                value=ast.Constant(value=1),
+            )
+            tree.body[index] = ast.copy_location(replacement, node)
+    ast.fix_missing_locations(tree)
+    spec = importlib.util.spec_from_file_location("pyramidkv_baseline", path)
+    baseline = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = baseline
+    exec(compile(tree, str(path), "exec"), baseline.__dict__)
+    return baseline
 
 
 def run(args):
-    spec = importlib.util.spec_from_file_location("pyramidkv_baseline", args.baseline_source)
-    baseline = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = baseline
-    spec.loader.exec_module(baseline)
+    import torch_npu
+
+    baseline = load_baseline(args.baseline_source)
     if args.output.exists():
         raise ValueError("Refusing to overwrite a diagnostic")
     torch.npu.set_device(0)
@@ -140,6 +174,7 @@ def run(args):
         "iterations": args.iterations,
         "order": "alternating baseline/candidate",
         "geometry": "BF16, local 8 Q / 1 KV head, dim 256, 10 target + 1 MTP layers",
+        "baseline_contracts": "local adapter value types; historical contract imports normalized",
         "sources": {
             str(p): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in (

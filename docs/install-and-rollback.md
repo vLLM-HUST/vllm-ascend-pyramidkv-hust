@@ -1,104 +1,94 @@
-# Install, inspect, and rollback
+# Standalone installation, migration and rollback
 
-This document applies to the active external method. The shared adapter owns
-the scheduler/worker lifecycle, while this package supplies the `pyramidkv`
-method. The exact serving profile is documented in the support matrix.
+## Host preparation
 
-## Clean installation
+Install this plugin into a prepared vLLM/Ascend environment. Keep the host's
+matched torch/torch-npu, Triton Ascend, CANN libraries and native operators.
+Pip dependencies are empty intentionally: replacing those components during
+plugin installation is unsafe. Direct activation needs neither KVCompress nor
+Extension Manager. `python -m pip install .` builds the standalone distribution.
 
-On the prepared Ascend host, inherit its matched Torch/torch-npu packages into the
-isolated environment. These commands do not provision CANN or the qualified core/Ascend
-source stack; prepare those using the linked serving runbook first.
+The reproduced source host is vLLM `d0f22d2bda562156e4dbf433ce645e1769b4f804`
+and Ascend `03766ac696fde5ab1980d80ca0b8543d3580c989`, with the prepared native
+operators and CANN 9.1 environment. Package metadata is `0.23.0+empty` and
+`0.23.0.post1`; the launcher's `VLLM_VERSION=0.25.1` selects that host's ABI branch,
+not its installed version. See [support boundaries](support-matrix.md).
+
+## Direct launch
 
 ```bash
-python -m venv --system-site-packages .venv-pyramidkv
-source .venv-pyramidkv/bin/activate
-python -m pip install \
-  "vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@d22088cf6a45aeb7c47e39101607a00d87bf2006"
-python -m pip install --no-deps "vllm-ascend-kvcompress-hust @ git+https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust.git@19f322130e1b3841da953b1b421bcf3259e9b8dc"
-python -m pip install --no-deps /path/to/vllm-ascend-pyramidkv-hust
+export VLLM_ASCEND_PYRAMIDKV_ENABLED=1
+export VLLM_ASCEND_PYRAMIDKV_CONFIG="$PWD/scripts/qwen35/pyramidkv-aligned.json"
+export VLLM_ASCEND_PYRAMIDKV_EXPERIMENTAL_MTP2=1
+export VLLM_PLUGINS=ascend,ascend_model,ascend_model_loader,ascend_kv_connector,ascend_pyramidkv
+export MODEL_PATH=/path/to/Qwen3.5-35B-A3B
+export PYRAMIDKV_CONFIG="$VLLM_ASCEND_PYRAMIDKV_CONFIG"
+bash scripts/qwen35/serve.sh
+```
+
+The configuration may be a JSON file path or inline JSON:
+
+```json
+{"schema_version":1,"provider":"ascend_pyramidkv","method":"pyramidkv","method_config":{"max_capacity_prompt":1368,"min_compression_prompt_tokens":4096,"window_size":8,"kernel_size":7,"pooling":"maxpool","beta":2,"kv_cache_granularity":"kv_head","gqa_score_aggregation":"mean","merge":null}}
+```
+
+The included reproduction launcher explicitly enables the plugin, chooses a
+compatible local Mamba-ABI worker, and sets the complete supported profile. It
+accepts `SERVE_HOST`, `SERVE_PORT`, `ASCEND_RT_VISIBLE_DEVICES`,
+`PYRAMIDKV_KV_CACHE_MEMORY_BYTES`, `PYRAMIDKV_CONFIG` and `PYRAMIDKV_WORKER_CLS`. The latter
+can select a native worker on a matched host. Dev-hub helper modules are not
+required. The default `pyramidkv.json` is the historical smoke profile; choose
+the aligned file explicitly when reproducing that configuration.
+
+The optional `VLLM_ASCEND_PYRAMIDKV_BATCHED_METADATA=1` enables batched metadata
+with guarded native fallback. The optional
+`VLLM_ASCEND_PYRAMIDKV_QWEN_GDN_LIST_COMPAT=1` is only for the documented older
+list-based GDN operator ABI; keep it unset on the tensor ABI. These choices do
+not broaden the supported model or execution profile.
+
+## Optional Extension Manager
+
+Install a compatible `vllm-hust-ext` (0.2.0.dev0 or 0.3.x). Configure and enable
+only the PyramidKV bundle; there is no `requires_extensions` dependency:
+
+```bash
 vllm-hust-ext extension inspect org.vllm-hust.ascend-pyramidkv
-vllm-hust-ext extension enable org.vllm-hust.ascend-kvcompress
+vllm-hust-ext extension configure org.vllm-hust.ascend-pyramidkv \
+  --file scripts/qwen35/pyramidkv-aligned.json
 vllm-hust-ext extension enable org.vllm-hust.ascend-pyramidkv
+vllm-hust-ext extension plan org.vllm-hust.ascend-pyramidkv
 ```
 
-Inspection must report the active
-`vllm_ascend_kvcompress.methods:pyramidkv` implementation without an
-activation blocker. Host compatibility checks still reject every unqualified
-runtime profile. The PyramidKV package also checks shared-host method API v1
-when its method entry point loads, so an older adapter cannot fail later in a
-serving request.
+Manager launch must still supply the complete host/model profile and
+`VLLM_ASCEND_PYRAMIDKV_EXPERIMENTAL_MTP2=1`. A directly supplied config environment
+variable overrides Manager state. The manifest claims
+`vllm-ascend.kv-cache.mutation` exclusively, matching the shared adapter's claim.
 
-Manifest 0.3 additionally makes the shared Bundle dependency machine-readable:
-ECPA rejects PyramidKV enablement until `org.vllm-hust.ascend-kvcompress`
-`>=0.9,<0.10` is installed and enabled. It also rejects another enabled Bundle
-claiming the same PyramidKV method registration. These checks do not select a
-method or prove it runtime-effective.
+## Migration from the shared adapter
 
-For the source-built Qwen3.5 serving profile, see the
-[prepared-host runbook](qwen35-serving-smoke.md). The initial October reproduction used
-direct environment activation and observed a Manager joint-plan conflict on
-`vllm.environment`. The newer pinned Manager fixes that composition error; see
-[the managed-launch follow-up](qwen35-managed-launch.md) for joint activation,
-configuration, raw invocation evidence and shutdown verification. Enabling both
-bundles alone still does not prove runtime effectiveness.
+1. Stop the old service and allow workers to release their device allocations.
+2. Disable `org.vllm-hust.ascend-kvcompress` in Manager if enabled; remove
+   `VLLM_ASCEND_KVCOMPRESS_ENABLED`, its config/experimental variables and the
+   `ascend_kvcompress` selection from the new process environment.
+3. Install this distribution. KVCompress may be uninstalled if no other workload
+   uses it; it is not used here even if it remains installed.
+4. Change the JSON provider from `ascend_kvcompress` to `ascend_pyramidkv`; retain
+   `method: pyramidkv` and all algorithm options. Replace the environment prefix
+   and general plugin name as shown above.
+5. Enable PyramidKV directly or through Manager, restart, and run the validation
+   protocol. Old provider names fail with an explicit unsupported-provider error.
 
-The pinned shared commit includes the FULL-graph per-layer cache-write fix and
-Manifest 0.3 migration on the host-compatible validation branch. Shared
-[PR #19](https://github.com/vLLM-HUST/vllm-ascend-kvcompress-hust/pull/19) carries
-the runtime fix against its newer default branch. The package version alone
-does not distinguish these revisions. The [public 0.9.0 wheel audit](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-09-public-package-audit/README.md)
-confirms that the downloadable wheel differs from this qualified source and still lacks the
-graph-slot fix; do not replace the source pin with a version-only dependency. The
-[paired protocol](issue-1-evaluation-protocol.md) reproduces the current
-evaluation with an explicit `pyramidkv-aligned.json` configuration; the original
-512/beta-20 smoke configuration is not interchangeable quality evidence.
+Conflict checks inspect old activation state and already-loaded old patch
+markers without importing the shared package. Do not enable both plugins in the
+same process. Hooks and captured graphs are process-owned; live hot replacement
+is unsupported.
 
-The upstream FULL-graph cache-write fix in shared PR #19 has merged as
-`023170af0213cb23576bdc64d5606c60744effb7`. This resolves the source-merge item, not the public
-artifact gate: the recheck still observes the same public 0.9.0 wheel hash as the static audit.
-The newer shared branch is not automatically qualified against this older prepared host; retain
-`19f322130e1b3841da953b1b421bcf3259e9b8dc` until the declared target artifact is separately accepted.
-See the [resource and release recheck](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-11-runtime-resource-recheck/README.md).
+## Rollback
 
-A later [0.10.0 artifact check](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/93090eda628b9c6038d1d7aa87ee115808e50ced/archive/mod-targeted-20261023/pyramid-current/snapshot/evidence/current/2026-10-19-shared-010-acceptance/README.md)
-found a published Manifest 0.3 wheel with the graph fix, but also reproduced a legacy-host router
-import failure during the model-load helper. Shared PR #23 proposes the ABI guard. The current
-PyramidKV dependency remains `>=0.9,<0.10`; a locally widened candidate descriptor is test evidence,
-not approval to install the released 0.10.0 wheel or change this source pin.
-
-## Offline development tests
-
-Use an environment whose PyTorch build already matches the target host:
-
-```bash
-python -m pip install --no-deps -e /path/to/vllm-ascend-pyramidkv-hust
-python -m pip install pytest ruff
-pytest -q /path/to/vllm-ascend-pyramidkv-hust/tests
-```
-
-The real-device selection oracle is opt-in so ordinary package tests never
-claim or consume an NPU implicitly:
-
-```bash
-ASCEND_RT_VISIBLE_DEVICES=0 PYRAMIDKV_RUN_NPU_TESTS=1 \
-  pytest -q tests/npu/test_selection.py
-```
-
-## Disable and rollback
-
-Disable the method bundle before uninstalling it. The shared adapter may remain
-enabled for other compression methods:
-
-```bash
-vllm-hust-ext extension disable org.vllm-hust.ascend-pyramidkv
-python -m pip uninstall -y vllm-ascend-pyramidkv-hust
-python - <<'PY'
-import importlib.util
-
-assert importlib.util.find_spec("vllm_ascend_pyramidkv") is None
-PY
-```
-
-The provider owns no external service or persistent cache data. Rollback does
-not require data migration.
+Stop the service, disable `org.vllm-hust.ascend-pyramidkv`, unset its activation
+variables, and start a fresh process. For the supplied launcher use
+`PYRAMIDKV_ENABLED=0` and ensure Manager does not also enable the bundle. Verify
+absence of compression commits and use an uncompressed KV cache. Uninstalling
+a wheel or changing an environment variable cannot unpatch an existing process.
+To reproduce the old shared implementation, use its separately archived exact
+versions/configuration in a fresh environment; do not mix old and new adapters.

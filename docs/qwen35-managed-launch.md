@@ -1,5 +1,10 @@
 # Qwen3.5 joint Manager launch
 
+> Historical shared-adapter record. For version 0.3 and later, use
+> [standalone installation](install-and-rollback.md) and the
+> [local host contract](host-contract.md). The old dependencies and commands
+> below apply only to their recorded revisions.
+
 This follows the [prepared-host runbook](qwen35-serving-smoke.md) and the
 [paired evaluation](issue-1-evaluation-protocol.md). The original Manager pin
 `98903e4` rejects joint adapter/method plans on `vllm.environment` even though
