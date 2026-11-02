@@ -24,13 +24,27 @@ flowchart LR
 | Module under `vllm_ascend_pyramidkv` | Responsibility |
 | --- | --- |
 | `adapter/config.py` | Direct/Manager activation, strict local config, conflicting mutation guard |
-| `adapter/contracts.py`, `adapter/transaction.py` | Shape, cache, query and result types; pickle-safe private-block plans |
+| `adapter/contracts.py`, `adapter/transaction.py` | Shape, cache, query and result types; private-block plans and shared active anchors |
 | `adapter/plugin.py` | Scheduler/runner/attention/slot hooks and lazy worker loading |
 | `adapter/scheduler.py` | Allocation, APC admission, commit barrier, deferred free, abort/preemption |
-| `adapter/worker.py` | Bind/capture/compress/commit, physical offsets, per-layer and MTP metadata |
+| `adapter/worker.py` | Cache binding, query capture, compression and commit orchestration |
+| `adapter/metadata.py` | Physical offsets, semantic length snapshots, native/batched layer slots, FULL capture and MTP metadata |
+| `adapter/host_validation.py` | Shared host/layout/runtime checks without importing scheduler or worker implementations |
 | `adapter/host_compat.py`, `adapter/host_worker.py`, `adapter/qwen_gdn_ops.py` | Exact host ABI bridges and missing GDN output operation |
 | `method.py` | Query ring buffers, transaction identity, selected-page materialization |
-| `provider.py` | Original PyramidKV scoring, GQA reduction, pooling and layer budget schedule |
+| `algorithm.py` | Host-independent configuration, scoring, GQA reduction, pooling and layer budget schedule |
+
+`AttentionMetadata` receives the worker's active-request mapping by reference;
+commit and reset mutate that mapping in place. It owns all metadata buffers and
+replaces them together when binding a new runner/cache. Worker hook methods are
+an explicit facade for this component. Native and batched paths share the same
+per-layer offset calculation. The scheduler imports validation and transaction
+values directly, without loading the worker implementation.
+
+Version 0.4 removes the historical schema-v1 provider/runtime, registry and host
+contract fallback. The current JSON configuration's `schema_version: 1` remains
+supported. Algorithm consumers use `PyramidKVConfig` and selection functions in
+`algorithm.py`; there is no legacy runtime compatibility shim.
 
 The owned adapter derives from shared commit
 `f33785844be5bff7716c9464dd8444ef0b4b05e9`; PR33's subsequent documentation commits

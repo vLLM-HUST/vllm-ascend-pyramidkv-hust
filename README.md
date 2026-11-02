@@ -53,6 +53,8 @@ Version 0.4 removes the retired schema-v1 provider runtime: `get_provider`,
 `PyramidKVSelection`, `select_pyramid_indices`, `materialize_pyramid_kv` and
 `select_pyramid_kv` from `vllm_ascend_pyramidkv.algorithm`. There is one runtime:
 the independent adapter. Historical evidence remains linked to its original source.
+The current JSON configuration still uses `schema_version: 1`; that configuration
+is distinct from the removed historical host-provider API.
 
 ## Architecture and semantics
 

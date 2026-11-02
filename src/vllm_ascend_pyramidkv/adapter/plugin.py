@@ -16,11 +16,11 @@ from types import ModuleType
 from typing import Any
 
 from .config import assert_no_conflicting_adapter, extension_enabled, load_runtime_selection
+from .host_validation import supports_mtp2
 from .worker import (
     ATTENTION_QUERY_PROVIDER_ATTRIBUTE,
     RUNNER_PROVIDER_ATTRIBUTE,
     PyramidKVWorker,
-    _supports_mtp2,
 )
 
 logger = logging.getLogger("vllm." + __name__)
@@ -173,7 +173,7 @@ def _install_runner_hooks(runner_cls: type[Any], selection: Any) -> None:
             if method_probe.query_window_tokens:
                 _install_attention_query_hook()
 
-        install_qwen_gdn_list_compat(mtp2_reference_fallback=_supports_mtp2(getattr(runner, "vllm_config", None)))
+        install_qwen_gdn_list_compat(mtp2_reference_fallback=supports_mtp2(getattr(runner, "vllm_config", None)))
         model_config = getattr(getattr(runner, "vllm_config", None), "model_config", None)
         hf_config = getattr(model_config, "hf_config", None)
         model_type = str(getattr(hf_config, "model_type", ""))
@@ -198,7 +198,7 @@ def _install_runner_hooks(runner_cls: type[Any], selection: Any) -> None:
         )
 
         install_removed_model_routing_flag(runner.vllm_config)
-        bridge = qwen_mtp2_cache_binding_bridge() if _supports_mtp2(runner.vllm_config) else nullcontext()
+        bridge = qwen_mtp2_cache_binding_bridge() if supports_mtp2(runner.vllm_config) else nullcontext()
         with bridge:
             result = original_initialize(runner, kv_cache_config, *args, **kwargs)
         # Ascend deep-copies and normalizes the incoming plan before storing

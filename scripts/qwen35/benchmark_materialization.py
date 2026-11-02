@@ -189,7 +189,7 @@ def run(args):
         "iterations": args.iterations,
         "order": "alternating baseline/candidate",
         "geometry": "BF16, local 8 Q / 1 KV head, dim 256, 10 target + 1 MTP layers",
-        "baseline_contracts": "local adapter value types; historical contract imports normalized",
+        "baseline_contracts": "local adapter value types and pure algorithm; historical imports normalized",
         "sources": {
             str(p): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in (

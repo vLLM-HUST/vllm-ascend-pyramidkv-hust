@@ -13,14 +13,14 @@ from typing import Any
 
 from ..method import create_pyramidkv_method
 from .config import ProviderSelection
-from .model import model_shape_from_config
-from .transaction import PLAN_ATTRIBUTE, CompressionPlan
-from .worker import (
-    _allowed_scheduler_block_sizes,
-    _find_full_attention_group,
-    _supports_mtp2,
-    _validate_method_runtime_spec,
+from .host_validation import (
+    allowed_scheduler_block_sizes,
+    find_full_attention_group,
+    supports_mtp2,
+    validate_method_runtime_spec,
 )
+from .model import model_shape_from_config
+from .transaction import PLAN_ATTRIBUTE, ActiveCompression, CompressionPlan, blocks_for_tokens
 
 logger = logging.getLogger("vllm." + __name__)
 
@@ -55,16 +55,6 @@ class SchedulerPendingCompression:
     previous_eligible_step: int | None = None
 
 
-@dataclass(frozen=True)
-class SchedulerActiveCompression:
-    semantic_anchor: int
-    physical_anchor: int
-
-    @property
-    def removed_tokens(self) -> int:
-        return self.semantic_anchor - self.physical_anchor
-
-
 @dataclass
 class SchedulerDeferredRelease:
     request_id: str
@@ -82,7 +72,7 @@ class SchedulerCompressionState:
             model_shape_from_config(scheduler.vllm_config.model_config),
         )
         spec = method.runtime_spec
-        _validate_method_runtime_spec(method.name, spec)
+        validate_method_runtime_spec(method.name, spec)
         query_window = getattr(method, "query_window_tokens", 0)
         if (
             isinstance(query_window, bool)
@@ -107,7 +97,7 @@ class SchedulerCompressionState:
         self.scheduler_alignment_size = int(scheduler.block_size)
         self.scheduler_block_size = self.scheduler_alignment_size
         self.pending: dict[str, SchedulerPendingCompression] = {}
-        self.active: dict[str, SchedulerActiveCompression] = {}
+        self.active: dict[str, ActiveCompression] = {}
         self.deferred_releases: dict[str, list[SchedulerDeferredRelease]] = {}
         host_config = scheduler.vllm_config
         self.async_scheduling = bool(getattr(host_config.scheduler_config, "async_scheduling", False))
@@ -186,7 +176,7 @@ class SchedulerCompressionState:
             reasons.append("the upstream v1 Scheduler or the current Ascend BalanceScheduler wrapper is required")
         if bool(getattr(scheduler, "_balance_enabled", False)):
             reasons.append("Ascend balance scheduling must be disabled")
-        if config.speculative_config is not None and not _supports_mtp2(config):
+        if config.speculative_config is not None and not supports_mtp2(config):
             reasons.append(
                 "speculative decoding is unqualified; experimental Qwen3.5 "
                 "MTP2 requires mamba_cache_mode='align' and explicit opt-in"
@@ -210,7 +200,7 @@ class SchedulerCompressionState:
             if value != 1:
                 reasons.append(f"{name} size must be one, got {value}")
         try:
-            self.attention_group_index = _find_full_attention_group(scheduler.kv_cache_config.kv_cache_groups)
+            self.attention_group_index = find_full_attention_group(scheduler.kv_cache_config.kv_cache_groups)
         except RuntimeError as error:
             reasons.append(str(error))
         single_managers = scheduler.kv_cache_manager.coordinator.single_type_managers
@@ -229,7 +219,7 @@ class SchedulerCompressionState:
                         f"{self.scheduler_alignment_size}"
                     )
                 self.scheduler_block_size = manager_block_sizes[self.attention_group_index]
-                allowed_block_sizes = _allowed_scheduler_block_sizes(config)
+                allowed_block_sizes = allowed_scheduler_block_sizes(config)
                 if self.scheduler_block_size not in allowed_block_sizes:
                     reasons.append(
                         "full-attention logical block size must be one of "
@@ -305,7 +295,7 @@ class SchedulerCompressionState:
                 # Private compressed KV has no valid prefix hash for the
                 # request's original semantic token sequence.
                 cache_manager.num_cached_block[request_id] = 0
-            self.active[request_id] = SchedulerActiveCompression(plan.semantic_anchor, plan.physical_anchor)
+            self.active[request_id] = ActiveCompression(plan.semantic_anchor, plan.physical_anchor)
             request = scheduler.requests[request_id]
             if pending.previous_eligible_step is not None:
                 request.next_decode_eligible_step = pending.previous_eligible_step
@@ -477,7 +467,7 @@ class SchedulerCompressionState:
                 # acceptance. Initial prompt compression has no draft KV.
                 continue
             blocks = single_manager.req_to_blocks.get(request_id, ())
-            keep = _blocks_for_tokens(self.budget, self.scheduler_block_size)
+            keep = blocks_for_tokens(self.budget, self.scheduler_block_size)
             if len(blocks) < keep:
                 raise RuntimeError(f"request {request_id!r} has too few scheduler blocks")
             pool = self.scheduler.kv_cache_manager.block_pool
@@ -753,9 +743,5 @@ def _install_coordinator_hooks(coordinator_cls: type[Any]) -> None:
     setattr(coordinator_cls, marker, True)
 
 
-def _physical_tokens(semantic_tokens: int, active: SchedulerActiveCompression) -> int:
+def _physical_tokens(semantic_tokens: int, active: ActiveCompression) -> int:
     return max(0, int(semantic_tokens) - active.removed_tokens)
-
-
-def _blocks_for_tokens(num_tokens: int, block_size: int) -> int:
-    return (num_tokens + block_size - 1) // block_size

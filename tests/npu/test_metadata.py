@@ -13,7 +13,8 @@ import pytest
 import torch
 
 from vllm_ascend_pyramidkv.adapter.contracts import LayerCache
-from vllm_ascend_pyramidkv.adapter.worker import ActiveCompression, PyramidKVWorker
+from vllm_ascend_pyramidkv.adapter.metadata import AttentionMetadata
+from vllm_ascend_pyramidkv.adapter.transaction import ActiveCompression
 
 
 @dataclass
@@ -47,7 +48,7 @@ def test_metadata_matches_native_ascend_slots():
     max_tokens = 4096
     max_reqs = 4
     layer_count = 11
-    provider = PyramidKVWorker.__new__(PyramidKVWorker)
+    provider = AttentionMetadata(SimpleNamespace(speculative_config=None), {}, True)
     provider._metadata_tensor_cache = {}
     provider._batched_slot_storage = torch.empty((layer_count, max_tokens), dtype=torch.int64, device=device)
     layers = tuple(LayerCache(f"layer.{i}", i, torch.empty(0), torch.empty(0)) for i in range(layer_count))

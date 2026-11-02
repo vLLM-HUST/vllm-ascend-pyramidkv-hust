@@ -19,13 +19,12 @@ from vllm_ascend_pyramidkv.adapter.contracts import MethodRuntimeSpec
 from vllm_ascend_pyramidkv.adapter.scheduler import (
     _GROUP_LENGTH_STATE_ATTRIBUTE,
     _PREFIX_ADMISSION_STATE_ATTRIBUTE,
-    SchedulerActiveCompression,
     SchedulerCompressionState,
     SchedulerDeferredRelease,
     _install_coordinator_hooks,
     _install_manager_hooks,
 )
-from vllm_ascend_pyramidkv.adapter.transaction import PLAN_ATTRIBUTE, CompressionPlan
+from vllm_ascend_pyramidkv.adapter.transaction import PLAN_ATTRIBUTE, ActiveCompression, CompressionPlan
 
 
 @pytest.fixture(autouse=True)
@@ -429,7 +428,7 @@ def test_scheduler_commits_private_blocks_only_after_output_ack() -> None:
 
     assert [block.block_id for block in manager.req_to_blocks["r"]] == [50]
     assert [block.block_id for block in freed] == [5, 4, 3]
-    assert state.active["r"] == SchedulerActiveCompression(300, 128)
+    assert state.active["r"] == ActiveCompression(300, 128)
 
 
 def test_prefix_cache_keeps_original_blocks_and_never_hashes_private_kv() -> None:
@@ -545,7 +544,7 @@ def test_hybrid_cache_groups_keep_distinct_length_spaces() -> None:
             }
         ),
     )
-    state.active["r"] = SchedulerActiveCompression(300, 128)
+    state.active["r"] = ActiveCompression(300, 128)
     for manager in (attention, mamba):
         manager.get_num_blocks_to_allocate("r", 301, [], 300, 300, 301, prefill_end=300)
         manager.allocate_new_blocks("r", 301, 301)
@@ -664,7 +663,7 @@ def test_hybrid_coordinator_translates_only_full_attention_lengths() -> None:
         _GROUP_LENGTH_STATE_ATTRIBUTE,
         SimpleNamespace(
             attention_group_index=0,
-            active={"r": SchedulerActiveCompression(300, 128)},
+            active={"r": ActiveCompression(300, 128)},
         ),
     )
 
@@ -750,7 +749,7 @@ def test_hybrid_coordinator_supports_fixed_host_count_signature() -> None:
         _GROUP_LENGTH_STATE_ATTRIBUTE,
         SimpleNamespace(
             attention_group_index=0,
-            active={"r": SchedulerActiveCompression(300, 128)},
+            active={"r": ActiveCompression(300, 128)},
         ),
     )
 
@@ -892,7 +891,7 @@ def test_short_decode_request_is_not_armed_for_compression() -> None:
 def test_preempted_request_discards_scheduler_state() -> None:
     scheduler, _, _ = _scheduler()
     state = SchedulerCompressionState(scheduler, _selection())
-    state.active["r"] = SchedulerActiveCompression(300, 128)
+    state.active["r"] = ActiveCompression(300, 128)
 
     state.after_schedule(
         SimpleNamespace(

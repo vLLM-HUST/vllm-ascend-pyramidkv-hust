@@ -45,6 +45,20 @@ assert PyramidKVMethod.__module__ == "vllm_ascend_pyramidkv.method"
     assert result.returncode == 0, result.stderr
 
 
+def test_scheduler_import_does_not_load_worker_implementation():
+    result = run_isolated("""
+import sys
+from importlib.abc import MetaPathFinder
+class NoWorker(MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == "vllm_ascend_pyramidkv.adapter.worker":
+            raise AssertionError("scheduler loaded worker implementation")
+sys.meta_path.insert(0, NoWorker())
+from vllm_ascend_pyramidkv.adapter.scheduler import SchedulerCompressionState
+""")
+    assert result.returncode == 0, result.stderr
+
+
 def test_disabled_plugin_needs_no_host_or_torch():
     result = run_isolated("""
 import sys

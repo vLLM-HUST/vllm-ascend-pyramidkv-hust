@@ -44,14 +44,14 @@ Interfaces: `AttentionMetadata(config, active, requires_per_layer_physical_state
 `bind(runner, layer_caches, attention_group_index, speculative_cache_layer)`;
 explicit worker hook delegation; shared `ActiveCompression` and block-count helper.
 
-- [ ] Add regressions for scheduler import separation and metadata rebinding;
+- [x] Add regressions for scheduler import separation and metadata rebinding;
   observe failure before implementation.
-- [ ] Move shared validation out of worker; share active anchors and block math.
-- [ ] Extract metadata state/buffers and bind/reset logic using composition;
+- [x] Move shared validation out of worker; share active anchors and block math.
+- [x] Extract metadata state/buffers and bind/reset logic using composition;
   consolidate per-layer offset construction for native and batched paths.
-- [ ] Adapt existing fixtures to component boundaries without weakening behavior
+- [x] Adapt existing fixtures to component boundaries without weakening behavior
   assertions; run complete adapter/algorithm and NPU oracle tests.
-- [ ] Commit the independently testable ownership refactor.
+- [x] Commit the independently testable ownership refactor.
 
 ### Task 3: Validate and deliver
 
