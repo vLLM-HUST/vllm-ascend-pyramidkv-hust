@@ -12,8 +12,11 @@ Freeze the published `0.4.0rc1` wheel hash, source tree, model/tokenizer identit
 vLLM `d0f22d2`, Ascend `03766ac`, native operators, CANN 9.1, actual 910B2 device
 allocation, BF16/TP2, APC, MTP2, async/chunked prefill, 32K context and
 FULL_AND_PIECEWISE before requests. Use aligned 1368/beta-2 and batched metadata
-for the effect candidate. Do not change budgets or select a metadata path after
-seeing results.
+for the effect candidate: set `VLLM_ASCEND_PYRAMIDKV_BATCHED_METADATA=1`
+in both arms and vary only compression activation. Linked historical protocols
+supply workload and measurement rules; their old shared-adapter source pins and
+activation variables are superseded by this release contract. Do not change
+budgets or select a metadata path after seeing results.
 
 B0 and B1 install the same wheel and host. Start fresh processes with
 `PYRAMIDKV_ENABLED=0` versus `1`; remove old shared activation and competing

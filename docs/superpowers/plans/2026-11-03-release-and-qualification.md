@@ -30,7 +30,7 @@ implementer's: full independent-version quality/capacity qualification is pendin
 
 - [x] Update #1/#8 while preserving their historical records.
 - [x] Close shared #33 as superseded by PyramidKV #28/#29.
-- [ ] Independently review #549; verify all raw checksums and offline results.
+- [x] Independently review #549; verify all raw checksums and offline results.
 - [ ] Fix substantive verifier findings without changing measured originals;
   require final tests/lint and merge the exact reviewed head.
 
@@ -39,8 +39,8 @@ implementer's: full independent-version quality/capacity qualification is pendin
 Files: pyproject.toml, package __init__, extension manifest, README,
 install-and-rollback.md, docs/releases/0.4.0rc1.md.
 
-- [ ] Set 0.4.0rc1 consistently and document public install and support limits.
-- [ ] Run full tests, formatting/lint, NPU oracle, build and clean-wheel checks.
+- [x] Set 0.4.0rc1 consistently and document public install and support limits.
+- [x] Run full tests, formatting/lint, NPU oracle, build and clean-wheel checks.
 - [ ] Obtain fresh release-branch review, resolve findings, pass CI and merge.
 - [ ] Build/tag exact merged source; verify wheel/source identity and create a
   GitHub prerelease with wheel, sdist, provenance and SHA256SUMS.
