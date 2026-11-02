@@ -35,8 +35,9 @@ selected groups; `--group-kinds` with no values selects quality alone. An absent
 requested kind or an empty total selection fails before network access.
 
 The runner checks cases/groups against `manifest.json` before creating outputs or
-contacting a server. It rejects duplicate/unsafe case IDs and invalid group
-references. `execution.json` records the manifest hash and exact selected groups
+contacting a server. It validates all request/quality fields, rejects unknown case
+kinds, duplicate/unsafe IDs and invalid group references, and requires each
+non-quality case to belong to exactly one group. `execution.json` records the manifest hash and exact selected groups
 and quality IDs. Use new output directories for every lifecycle.
 
 Each request retains its exact `.request.json`, response `.sse`, and parsed result.

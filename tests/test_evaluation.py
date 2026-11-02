@@ -167,6 +167,51 @@ def test_invalid_plan_stops_before_requests(tmp_path, local_api, fault):
     assert not (tmp_path / "run").exists()
 
 
+@pytest.mark.parametrize(
+    "fault", ["missing_prompt", "missing_answers", "wrong_length", "bad_token", "bad_limit", "bad_flag", "bad_salt"]
+)
+def test_malformed_later_case_is_rejected_before_earlier_groups(tmp_path, local_api, fault):
+    base, received, _ = local_api
+    plan = tmp_path / "plan"
+    cases, groups = saved_plan(plan)
+    row = cases[-1]
+    if fault == "missing_prompt":
+        del row["prompt"]
+    elif fault == "missing_answers":
+        del row["answers"]
+    elif fault == "wrong_length":
+        row["prompt_tokens"] = 3
+    elif fault == "bad_token":
+        row["prompt"] = [True, -1]
+    elif fault == "bad_limit":
+        row["max_tokens"] = 0
+    elif fault == "bad_flag":
+        row["ignore_eos"] = "false"
+    elif fault == "bad_salt":
+        row["cache_salt"] = ["invalid"]
+    save_plan(plan, cases, groups)
+    result = invoke_run(plan, tmp_path / "run", base)
+    assert result.returncode != 0
+    assert not received
+    assert not (tmp_path / "run").exists()
+
+
+@pytest.mark.parametrize("fault", ["unknown_quality_kind", "orphan_group_case"])
+def test_default_plan_cannot_silently_omit_cases(tmp_path, local_api, fault):
+    base, received, _ = local_api
+    plan = tmp_path / "plan"
+    cases, groups = saved_plan(plan)
+    if fault == "unknown_quality_kind":
+        cases[-1]["kind"] = "qualty"
+    else:
+        groups.pop()
+    save_plan(plan, cases, groups)
+    result = invoke_run(plan, tmp_path / "run", base)
+    assert result.returncode != 0
+    assert not received
+    assert not (tmp_path / "run").exists()
+
+
 @pytest.mark.parametrize("cached_tokens", [0, 1])
 def test_saved_salt_and_uncached_policy_retain_exact_requests(tmp_path, local_api, cached_tokens):
     base, received, cached = local_api

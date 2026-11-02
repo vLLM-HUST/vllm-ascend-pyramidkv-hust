@@ -267,6 +267,27 @@ def load_plan(path: Path, group_kinds: list[str] | None, skip_quality: bool) -> 
     case_ids = [row["case_id"] for row in cases]
     if len(set(case_ids)) != len(case_ids) or any(not re.fullmatch(r"[A-Za-z0-9_-]+", key) for key in case_ids):
         raise ValueError("Duplicate or unsafe case IDs")
+    for case in cases:
+        kind = case.get("kind")
+        if kind not in (*GROUP_KINDS, "quality"):
+            raise ValueError(f"Unknown case kind: {kind}")
+        prompt = case.get("prompt")
+        if not isinstance(prompt, list) or not prompt or any(type(token) is not int or token < 0 for token in prompt):
+            raise ValueError("Each case needs a nonempty list of token IDs")
+        if type(case.get("prompt_tokens")) is not int or case["prompt_tokens"] != len(prompt):
+            raise ValueError("Prompt length disagrees with token IDs")
+        if type(case.get("max_tokens")) is not int or case["max_tokens"] <= 0:
+            raise ValueError("Each case needs a positive output limit")
+        if type(case.get("ignore_eos")) is not bool or type(case.get("require_uncached", False)) is not bool:
+            raise ValueError("Case flags must be booleans")
+        if "cache_salt" in case and (not isinstance(case["cache_salt"], str) or not case["cache_salt"]):
+            raise ValueError("Cache salt must be a nonempty string")
+        if kind == "quality":
+            answers = case.get("answers")
+            if not isinstance(answers, list) or not answers or any(not isinstance(answer, str) for answer in answers):
+                raise ValueError("Quality cases need reference answers")
+            if case.get("task") not in TASKS or case.get("subset") not in ("development", "holdout"):
+                raise ValueError("Quality cases need a known task and subset")
     group_names = [row["name"] for row in groups]
     if len(set(group_names)) != len(group_names):
         raise ValueError("Duplicate group names")
@@ -281,6 +302,8 @@ def load_plan(path: Path, group_kinds: list[str] | None, skip_quality: bool) -> 
             assigned.append(key)
     if len(set(assigned)) != len(assigned):
         raise ValueError("Cases assigned more than once")
+    if set(assigned) != {case["case_id"] for case in cases if case["kind"] != "quality"}:
+        raise ValueError("Every non-quality case must belong to a group")
     if group_kinds is not None:
         missing = set(group_kinds) - {group["kind"] for group in groups}
         if missing:
