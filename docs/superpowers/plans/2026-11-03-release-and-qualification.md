@@ -31,7 +31,7 @@ implementer's: full independent-version quality/capacity qualification is pendin
 - [x] Update #1/#8 while preserving their historical records.
 - [x] Close shared #33 as superseded by PyramidKV #28/#29.
 - [x] Independently review #549; verify all raw checksums and offline results.
-- [ ] Fix substantive verifier findings without changing measured originals;
+- [x] Fix substantive verifier findings without changing measured originals;
   require final tests/lint and merge the exact reviewed head.
 
 ### Task 2: Publish the standalone candidate
