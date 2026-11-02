@@ -31,7 +31,7 @@ create `tests/test_standalone.py`, `tests/adapter/`.
 - [x] Port needed behavioral tests, then local runtime and contracts; remove
   registry, TriAttention calibration and kernels; keep position subtraction local.
 - [x] Run algorithm and adapter tests; resolve lifecycle regressions.
-- [ ] Commit runtime and tests.
+- [x] Commit runtime and tests.
 
 ### Task 2: Packaging and activation
 
@@ -40,7 +40,7 @@ Files: pyproject, manifest, CI, launcher/configs, manifest tests.
 - [x] Assert local general entry point and no required extension/distribution.
 - [x] Change package/manifest/CI and launcher; default-off lazy entry function.
 - [x] Build wheel and exercise clean install, import blocker and Manager lifecycle.
-- [ ] Commit packaging and activation.
+- [x] Commit packaging and activation.
 
 ### Task 3: Delivery and qualification
 
@@ -50,5 +50,5 @@ MOD metadata and migration design; NPU/integration validation scripts as needed.
 - [ ] Run full suite, lint, format and build on final source.
 - [ ] Run native metadata/selection oracle and standalone serving validation.
 - [ ] Update current docs; clearly label historical shared-adapter instructions.
-- [ ] Request fresh whole-branch review; address important findings with tests.
+- [x] Request fresh whole-branch review; address important findings with tests.
 - [ ] Publish PR and validation, read back remote checks and state.

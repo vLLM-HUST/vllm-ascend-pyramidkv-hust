@@ -94,6 +94,7 @@ versions and limitations in the [canonical benchmark originals](docs/benchmark-o
 The [five-primary-dataset program](docs/five-dataset-program.md),
 [evaluation protocol](docs/issue-1-evaluation-protocol.md),
 [experimental protocols](docs/benchmark/README.md),
+[fixed-budget reproduction](docs/runtime-performance-boundary.md),
 [selected-page materialization](docs/selected-page-materialization.md),
 [historical serving smoke](docs/qwen35-serving-smoke.md) and
 [historical joint Manager launch](docs/qwen35-managed-launch.md) remain available.
