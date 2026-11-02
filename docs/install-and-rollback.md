@@ -14,6 +14,13 @@ operators and CANN 9.1 environment. Package metadata is `0.23.0+empty` and
 `0.23.0.post1`; the launcher's `VLLM_VERSION=0.25.1` selects that host's ABI branch,
 not its installed version. See [support boundaries](support-matrix.md).
 
+## Public candidate artifacts
+
+For a released package, download the wheel, sdist, provenance and checksums from
+the [0.4.0rc1 GitHub prerelease](releases/0.4.0rc1.md). Verify the checksums and
+install the wheel with `--no-deps` into the prepared host environment. Extract the
+sdist for the launcher and configuration below. No PyPI availability is implied.
+
 ## Direct launch
 
 ```bash
