@@ -225,10 +225,7 @@ def _install_runner_hooks(runner_cls: type[Any], selection: Any) -> None:
             result = original_metadata(runner, *args, **kwargs)
         finally:
             _METADATA_PROVIDER.reset(token)
-        if provider is not None and (
-            getattr(provider, "requires_per_layer_physical_state", False)
-            or getattr(provider, "_has_per_layer_rows", False)
-        ):
+        if provider is not None:
             num_tokens = args[0] if args else kwargs["num_tokens"]
             num_reqs = args[1] if len(args) > 1 else kwargs["num_reqs"]
             return provider.per_layer_attention_metadata(result, num_tokens, num_reqs)
@@ -257,17 +254,13 @@ def _install_runner_hooks(runner_cls: type[Any], selection: Any) -> None:
         provider = getattr(runner, RUNNER_PROVIDER_ATTRIBUTE, None)
         output = args[0] if args else kwargs.get("scheduler_output")
         observes = provider is not None and getattr(provider, "query_window_tokens", 0)
-        has_per_layer_metadata = provider is not None and (
-            getattr(provider, "requires_per_layer_physical_state", False)
-            or getattr(provider, "_has_per_layer_rows", False)
-        )
-        if has_per_layer_metadata:
+        if provider is not None:
             provider.begin_per_layer_step(output)
         if observes:
             provider.begin_query_step(output)
         try:
             result = original_execute_model(runner, *args, **kwargs)
-            if has_per_layer_metadata:
+            if provider is not None:
                 provider.finish_per_layer_step()
             if observes:
                 provider.finish_query_step()

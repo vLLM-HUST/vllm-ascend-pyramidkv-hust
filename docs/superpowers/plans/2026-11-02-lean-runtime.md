@@ -58,8 +58,8 @@ explicit worker hook delegation; shared `ActiveCompression` and block-count help
 Files: current architecture/migration docs, package/version and validation receipts
 outside the source tree.
 
-- [ ] Run full suite, host-absent suite, lint, format and wheel/sdist gates.
+- [x] Run full suite, host-absent suite, lint, format and wheel/sdist gates.
 - [ ] Verify clean-wheel discovery and live pinned TP2 serving with both metadata paths.
-- [ ] Request fresh whole-branch review and resolve substantive findings.
+- [x] Request fresh whole-branch review and resolve substantive findings.
 - [ ] Publish PR with exact scope, removed API list and validation limitations;
   verify final CI, integrate and clean the temporary worktree/artifacts.
