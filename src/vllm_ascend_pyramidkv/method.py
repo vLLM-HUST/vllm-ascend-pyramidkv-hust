@@ -21,8 +21,8 @@ from vllm_ascend_pyramidkv.adapter.contracts import (
     QueryObservation,
 )
 from vllm_ascend_pyramidkv.adapter.transaction import CompressionPlan
-from vllm_ascend_pyramidkv.provider import (
-    PyramidKVAscendConfig,
+from vllm_ascend_pyramidkv.algorithm import (
+    PyramidKVConfig,
     select_pyramid_indices,
 )
 
@@ -46,7 +46,7 @@ def _round_up(value: int, alignment: int) -> int:
     return ((value + alignment - 1) // alignment) * alignment
 
 
-def _maximum_retained_tokens(config: PyramidKVAscendConfig) -> int:
+def _maximum_retained_tokens(config: PyramidKVConfig) -> int:
     past_budget = config.max_capacity_prompt - config.window_size
     minimum_past = past_budget // config.beta
     return 2 * past_budget - minimum_past + config.window_size
@@ -115,7 +115,7 @@ class PyramidKVMethod(KVCompressionMethod):
         vllm_config: Any,
         model_shape: ModelShape,
     ) -> None:
-        self.config = PyramidKVAscendConfig.from_dict(dict(options))
+        self.config = PyramidKVConfig.from_dict(dict(options))
         self.vllm_config = vllm_config
         self.model_shape = model_shape
         alignment = QWEN35_ATTENTION_BLOCK_SIZE if model_shape.is_hybrid else ASCEND_CACHE_BLOCK_SIZE

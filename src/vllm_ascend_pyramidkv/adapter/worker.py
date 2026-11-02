@@ -11,8 +11,7 @@ KV-compression types. Host integration is validated at activation and cache bind
 from __future__ import annotations
 
 import logging
-import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -28,8 +27,18 @@ from .contracts import (
     QueryBatchSpan,
     QueryObservation,
 )
+from .host_validation import (
+    allowed_scheduler_block_sizes,
+    common_compatibility_reasons,
+    find_full_attention_group,
+    unpack_layer_cache,
+    validate_cache_tensor,
+    validate_method_runtime_spec,
+    validate_per_layer_host,
+)
+from .metadata import AttentionMetadata
 from .model import model_shape_from_config
-from .transaction import PLAN_ATTRIBUTE
+from .transaction import PLAN_ATTRIBUTE, ActiveCompression, blocks_for_tokens
 
 logger = logging.getLogger("vllm." + __name__)
 
@@ -43,17 +52,6 @@ class PendingCompression:
     physical_anchor: int
     block_ids: tuple[int, ...]
     per_layer_physical_num_tokens: tuple[tuple[str, int], ...] | None = None
-
-
-@dataclass(frozen=True)
-class ActiveCompression:
-    semantic_anchor: int
-    physical_anchor: int
-    per_layer_physical_num_tokens: tuple[tuple[str, int], ...] | None = None
-
-    @property
-    def removed_tokens(self) -> int:
-        return self.semantic_anchor - self.physical_anchor
 
 
 class PyramidKVWorker:
@@ -74,7 +72,7 @@ class PyramidKVWorker:
             self.model_shape,
         )
         self.runtime_spec: MethodRuntimeSpec = self.method.runtime_spec
-        _validate_method_runtime_spec(self.method.name, self.runtime_spec)
+        validate_method_runtime_spec(self.method.name, self.runtime_spec)
         self.requires_per_layer_physical_state = self.method.requires_per_layer_physical_state
         if not isinstance(self.requires_per_layer_physical_state, bool):
             raise TypeError("method requires_per_layer_physical_state must be a boolean")
@@ -100,20 +98,7 @@ class PyramidKVWorker:
         self.speculative_cache_layer: LayerCache | None = None
         self.pending: dict[str, PendingCompression] = {}
         self.active: dict[str, ActiveCompression] = {}
-        self._request_offsets_cpu: torch.Tensor | None = None
-        self._request_offsets_device: torch.Tensor | None = None
-        self._physical_positions: torch.Tensor | None = None
-        self._semantic_seq_lens_device: torch.Tensor | None = None
-        self._semantic_seq_lens_cpu: torch.Tensor | None = None
-        self._offset_row_snapshot: tuple[int, ...] = ()
-        self._has_active_rows = False
-        self._has_per_layer_rows = False
-        self._per_layer_metadata_seen = False
-        self._per_layer_step_requires_metadata = False
-        self._per_layer_slot_buffers: dict[str, torch.Tensor] = {}
-        self._metadata_tensor_cache: dict[str, tuple[tuple[int, ...], torch.Tensor]] = {}
-        self._batched_slot_storage: torch.Tensor | None = None
-        self._physical_lengths_applied = False
+        self.metadata = AttentionMetadata(vllm_config, self.active, self.requires_per_layer_physical_state)
         self._query_step_output: Any | None = None
         self._query_seen_layers: set[int] = set()
         self._query_forward_complete = False
@@ -121,7 +106,7 @@ class PyramidKVWorker:
 
     def validate_host(self, runner: Any) -> None:
         """Fail closed before binding any cache memory."""
-        reasons = list(_common_compatibility_reasons(self.vllm_config, runner))
+        reasons = list(common_compatibility_reasons(self.vllm_config, runner))
         reasons.extend(f"method {self.method.name}: {reason}" for reason in self.method.compatibility_reasons(runner))
         if reasons:
             raise RuntimeError("Ascend KV compression is incompatible with this launch:\n- " + "\n- ".join(reasons))
@@ -132,10 +117,10 @@ class PyramidKVWorker:
         from vllm.model_executor.models.utils import extract_layer_index
 
         groups = kv_cache_config.kv_cache_groups
-        self.attention_group_index = _find_full_attention_group(groups)
+        self.attention_group_index = find_full_attention_group(groups)
         group = groups[self.attention_group_index]
         self.scheduler_block_size = int(group.kv_cache_spec.block_size)
-        allowed_block_sizes = _allowed_scheduler_block_sizes(self.vllm_config)
+        allowed_block_sizes = allowed_scheduler_block_sizes(self.vllm_config)
         if self.scheduler_block_size not in allowed_block_sizes:
             raise RuntimeError(
                 "Ascend KV compression does not support logical KV block size "
@@ -174,9 +159,9 @@ class PyramidKVWorker:
             layer = context.get(layer_name)
             if layer is None:
                 raise RuntimeError(f"attention layer {layer_name!r} is not bound")
-            k_cache, v_cache = _unpack_layer_cache(layer_name, layer)
+            k_cache, v_cache = unpack_layer_cache(layer_name, layer)
             local_kv_heads = self.model_shape.num_kv_heads // self.tensor_parallel_size
-            _validate_cache_tensor(
+            validate_cache_tensor(
                 layer_name,
                 "K",
                 k_cache,
@@ -184,7 +169,7 @@ class PyramidKVWorker:
                 local_kv_heads,
                 self.cache_block_size,
             )
-            _validate_cache_tensor(
+            validate_cache_tensor(
                 layer_name,
                 "V",
                 v_cache,
@@ -210,40 +195,11 @@ class PyramidKVWorker:
             if len(mtp_caches) != 1:
                 raise RuntimeError("qualified MTP2 requires exactly one auxiliary attention cache")
             self.speculative_cache_layer = mtp_caches[0]
-        if self.requires_per_layer_physical_state:
-            self._validate_per_layer_host()
+        self.metadata.bind(runner, self.layer_caches, self.attention_group_index, self.speculative_cache_layer)
         if self.query_window_tokens:
             for cache in self.query_layer_caches:
                 layer = context[cache.name]
                 setattr(layer, ATTENTION_QUERY_PROVIDER_ATTRIBUTE, self)
-        pin_memory = bool(getattr(runner, "pin_memory", False))
-        self._request_offsets_cpu = torch.zeros(
-            runner.max_num_reqs,
-            dtype=torch.int64,
-            device="cpu",
-            pin_memory=pin_memory,
-        )
-        self._request_offsets_device = torch.zeros(runner.max_num_reqs, dtype=torch.int64, device=runner.device)
-        self._physical_positions = torch.empty(runner.max_num_tokens, dtype=torch.int64, device=runner.device)
-        if (
-            self.requires_per_layer_physical_state
-            and os.environ.get("VLLM_ASCEND_PYRAMIDKV_BATCHED_METADATA", "0") == "1"
-        ):
-            self._batched_slot_storage = torch.empty(
-                (len(self.layer_caches), runner.max_num_tokens),
-                dtype=torch.int64,
-                device=runner.device,
-            )
-            self._per_layer_slot_buffers = {
-                cache.name: self._batched_slot_storage[index] for index, cache in enumerate(self.layer_caches)
-            }
-        elif self.requires_per_layer_physical_state:
-            self._per_layer_slot_buffers = {
-                cache.name: torch.empty(runner.max_num_tokens, dtype=torch.int64, device=runner.device)
-                for cache in self.layer_caches
-            }
-        self._semantic_seq_lens_device = torch.empty_like(runner.seq_lens)
-        self._semantic_seq_lens_cpu = torch.empty_like(runner.optimistic_seq_lens_cpu)
         setattr(attention_block_table, RUNNER_PROVIDER_ATTRIBUTE, self)
         logger.info(
             "Ascend KV compression cache bound method=%s "
@@ -426,8 +382,7 @@ class PyramidKVWorker:
             for request_id in (self.pending.keys() | self.active.keys()) - live:
                 self.pending.pop(request_id, None)
                 self.active.pop(request_id, None)
-        self._physical_lengths_applied = False
-        self._sync_request_offset_rows()
+        self.metadata.update_request_offsets()
 
     def compress_scheduled_requests(self, scheduler_output: Any) -> None:
         """Run scheduler-authorized transactions after the attention step."""
@@ -462,7 +417,7 @@ class PyramidKVWorker:
             if self.attention_group_index >= len(request.block_ids):
                 raise RuntimeError("request has no full-attention block table")
             source_ids = tuple(int(value) for value in request.block_ids[self.attention_group_index])
-            required_blocks = _blocks_for_tokens(
+            required_blocks = blocks_for_tokens(
                 self.runtime_spec.max_physical_num_tokens,
                 self.scheduler_block_size,
             )
@@ -566,660 +521,25 @@ class PyramidKVWorker:
         return None
 
     def _validate_per_layer_host(self) -> None:
-        if self.runner is None:
-            raise RuntimeError("per-layer physical state requires a bound runner")
-        mode = getattr(getattr(self.runner, "compilation_config", None), "cudagraph_mode", None)
-        mode_name = getattr(mode, "name", None)
-        if mode_name == "FULL_AND_PIECEWISE":
-            if not self.requires_per_layer_physical_state:
-                raise RuntimeError(
-                    "graph replay requires the method to declare per-layer physical state before capture"
-                )
-            try:
-                from vllm_ascend.attention.attention_v1 import (
-                    AscendAttentionBackendImpl,
-                )
-            except (ImportError, OSError, RuntimeError) as error:
-                raise RuntimeError("per-layer graph replay backend is unavailable") from error
-            if not getattr(
-                AscendAttentionBackendImpl,
-                "_ascend_pyramidkv_layer_aware_graph_v1",
-                False,
-            ):
-                raise RuntimeError("per-layer graph replay requires the layer-aware FIA update seam")
-        elif mode_name != "NONE":
-            raise RuntimeError("per-layer physical state supports eager or FULL_AND_PIECEWISE execution only")
-        if any(getattr(self.runner, name, False) for name in ("use_dcp", "pcp_enabled")):
-            raise RuntimeError("per-layer physical state is unvalidated with context-parallel attention")
-        speculative = getattr(self.vllm_config, "speculative_config", None)
-        if speculative is not None and not _supports_mtp2(self.vllm_config):
-            raise RuntimeError("per-layer physical state supports only the qualified Qwen3.5 MTP2 path")
+        validate_per_layer_host(self.runner, self.vllm_config, self.requires_per_layer_physical_state)
 
     def physical_positions_for_slot_mapping(self, positions: torch.Tensor) -> torch.Tensor:
-        """Map writes to compacted slots while preserving semantic RoPE positions."""
-        if not self._has_active_rows:
-            return positions
-        if self.runner is None or self._request_offsets_device is None or self._physical_positions is None:
-            raise RuntimeError("compression position buffers are not initialized")
-        num_tokens = positions.numel()
-        return _shift_positions(
-            positions,
-            self.runner.req_indices.gpu[:num_tokens],
-            self._request_offsets_device,
-            self._physical_positions[:num_tokens],
-        )
+        return self.metadata.physical_positions_for_slot_mapping(positions)
 
     def apply_physical_attention_lengths(self) -> None:
-        """Replace semantic lengths only after host sampling decisions are built."""
-        if self._physical_lengths_applied or not self._has_active_rows:
-            return
-        if (
-            self.runner is None
-            or self._request_offsets_cpu is None
-            or self._request_offsets_device is None
-            or self._semantic_seq_lens_device is None
-            or self._semantic_seq_lens_cpu is None
-        ):
-            raise RuntimeError("compression length buffers are not initialized")
-        num_reqs = self.runner.input_batch.num_reqs
-        self._semantic_seq_lens_device[:num_reqs].copy_(self.runner.seq_lens[:num_reqs])
-        self._semantic_seq_lens_cpu[:num_reqs].copy_(self.runner.optimistic_seq_lens_cpu[:num_reqs])
-        self.runner.seq_lens[:num_reqs].sub_(self._request_offsets_device[:num_reqs])
-        self.runner.optimistic_seq_lens_cpu[:num_reqs].sub_(self._request_offsets_cpu[:num_reqs])
-        self._physical_lengths_applied = True
+        self.metadata.apply_physical_attention_lengths()
 
     def semantic_gdn_metadata(self, metadata: Any) -> Any:
-        """Give GDN its original recurrent positions, not attention offsets."""
-        if not self._physical_lengths_applied:
-            return metadata
-        if self._semantic_seq_lens_device is None or self._semantic_seq_lens_cpu is None:
-            raise RuntimeError("semantic GDN length buffers are not initialized")
-        num_reqs = metadata.num_reqs
-        return replace(
-            metadata,
-            seq_lens=self._semantic_seq_lens_device[:num_reqs],
-            _seq_lens_cpu=self._semantic_seq_lens_cpu[:num_reqs],
-            seq_lens_cpu_upper_bound=self._semantic_seq_lens_cpu[:num_reqs],
-        )
-
-    def _metadata_correction_tensor(self, key: str, values: tuple[int, ...], reference: torch.Tensor) -> torch.Tensor:
-        """Reuse immutable row corrections until the batch's values change.
-
-        Constructing a device tensor from Python values on every decode step
-        repeats host-to-device transfers for each layer. Entries are bounded by
-        layer/field, not request IDs. Replace rather than mutate an old tensor:
-        an earlier asynchronous operation may still be consuming it.
-        """
-        cached = self._metadata_tensor_cache.get(key)
-        if cached is not None:
-            previous, tensor = cached
-            if previous == values and tensor.dtype == reference.dtype and tensor.device == reference.device:
-                return tensor
-        tensor = torch.tensor(values, dtype=reference.dtype, device=reference.device)
-        self._metadata_tensor_cache[key] = values, tensor
-        return tensor
-
-    def _batched_per_layer_metadata(
-        self,
-        metadata: dict,
-        common: Any,
-        table: Any,
-        request_ids: list[str],
-        global_offsets: tuple[int, ...],
-        num_tokens: int,
-        num_reqs: int,
-    ) -> Any:
-        """Batch integer metadata for the validated single-CP expanded table.
-
-        The persistent row views are the same slot addresses captured by FULL
-        graphs. Preserve the native path for other layouts or metadata shapes.
-        No K/V, query, attention score, or method-selection arithmetic changes.
-        """
-        slots = self._batched_slot_storage
-        blocks = getattr(getattr(table, "block_table", None), "gpu", None)
-        block_size = getattr(table, "block_size", 0)
-        if (
-            slots is None
-            or getattr(table, "dcp_world_size", None) != 1
-            or getattr(table, "cp_kv_cache_interleave_size", 1) != 1
-            or not isinstance(blocks, torch.Tensor)
-            or blocks.ndim != 2
-            or not blocks.is_contiguous()
-            or not isinstance(block_size, int)
-            or block_size <= 0
-            or blocks.dtype not in (torch.int32, torch.int64)
-            or getattr(table, "logical_block_size", None) != block_size
-            or getattr(table, "physical_block_size", 0) != block_size * getattr(table, "blocks_per_phys_block", 0)
-        ):
-            return None
-        bases = [metadata.get(layer.name) for layer in self.layer_caches]
-        first = bases[0]
-        for base in bases:
-            if (
-                type(base).__name__ != "AscendMetadata"
-                or type(base).__module__ != "vllm_ascend.attention.attention_v1"
-                or not isinstance(base.seq_lens, torch.Tensor)
-                or base.seq_lens.ndim != 1
-                or base.seq_lens.shape != first.seq_lens.shape
-                or base.seq_lens.data_ptr() != first.seq_lens.data_ptr()
-                or base.seq_lens_list != first.seq_lens_list
-                or base.slot_mapping is None
-            ):
-                return None
-        nseq = first.seq_lens.numel()
-        if (
-            nseq < num_reqs
-            or num_tokens > slots.shape[1]
-            or first.seq_lens.dtype not in (torch.int32, torch.int64)
-            or blocks.device != slots.device
-            or blocks.shape[0] < num_reqs
-        ):
-            return None
-        runner = self.runner
-        assert runner is not None
-        offsets_by_request = {
-            key: dict(self.active[key].per_layer_physical_num_tokens or ()) for key in request_ids if key in self.active
-        }
-        offsets = [
-            tuple(
-                self.active[key].semantic_anchor
-                - offsets_by_request[key].get(layer.name, self.active[key].physical_anchor)
-                if key in self.active
-                else 0
-                for key in request_ids
-            )
-            for layer in self.layer_caches
-        ]
-        deltas = [
-            [global_value - value for global_value, value in zip(global_offsets, row, strict=True)] for row in offsets
-        ]
-        layers = len(bases)
-        correction = self._metadata_correction_tensor(
-            "batch:deltas",
-            tuple(value for row in deltas for value in row + [0] * (nseq - num_reqs)),
-            first.seq_lens,
-        ).reshape(layers, nseq)
-        # The qualified Ascend builder keeps these lengths on CPU, whereas
-        # positions/slots live on NPU. Follow the actual metadata device. Keep
-        # each call's length storage independent from in-flight older views.
-        lengths = first.seq_lens.unsqueeze(0) + correction
-        slots[:, num_tokens:].fill_(-1)
-        if not any(any(row) for row in offsets):
-            slots[:, :num_tokens].copy_(table.slot_mapping.gpu[:num_tokens].unsqueeze(0))
-        else:
-            positions = runner.positions[:num_tokens]
-            req_indices = runner.req_indices.gpu[:num_tokens].to(torch.long)
-            offset_tensor = self._metadata_correction_tensor(
-                "batch:offsets",
-                tuple(value for row in offsets for value in row),
-                positions,
-            ).reshape(layers, num_reqs)
-            physical = positions.unsqueeze(0) - offset_tensor.index_select(1, req_indices)
-            indices = physical.div(block_size, rounding_mode="floor") + req_indices.unsqueeze(0) * blocks.shape[1]
-            ids = blocks.view(-1).index_select(0, indices.reshape(-1).to(torch.long))
-            values = ids.reshape(layers, num_tokens) * block_size + physical.remainder(block_size)
-            slots[:, :num_tokens].copy_(values)
-        speculative = None
-        for index, (layer, base) in enumerate(zip(self.layer_caches, bases, strict=True)):
-            seq_list = list(base.seq_lens_list)
-            for row, delta in enumerate(deltas[index]):
-                seq_list[row] += delta
-            metadata[layer.name] = replace(
-                base,
-                seq_lens=lengths[index, :nseq],
-                seq_lens_cpu=lengths[index, :nseq],
-                seq_lens_list=seq_list,
-                slot_mapping=slots[index, :num_tokens],
-            )
-            if layer is self.speculative_cache_layer:
-                speculative = index
-        if self.speculative_cache_layer is not None:
-            if speculative is None or common is None:
-                raise RuntimeError("MTP2 batched attention metadata is incomplete")
-            common = self._speculative_common_metadata(
-                common,
-                deltas[speculative],
-                offsets[speculative],
-                slots[speculative, :num_tokens],
-                num_reqs,
-            )
-        return metadata, common
+        return self.metadata.semantic_gdn_metadata(metadata)
 
     def per_layer_attention_metadata(self, result: Any, num_tokens: int, num_reqs: int) -> Any:
-        """Give each full-attention layer distinct KV lengths and write slots."""
-        if not (self.requires_per_layer_physical_state or self._has_per_layer_rows):
-            return result
-        self._validate_per_layer_host()
-        if self.runner is None or not isinstance(result, tuple) or len(result) != 2:
-            raise RuntimeError("per-layer attention metadata hook was bypassed")
-        metadata, common = result
-        if not isinstance(metadata, dict):
-            raise RuntimeError("per-layer attention requires a single eager metadata batch")
-        runner = self.runner
-        batch = runner.input_batch
-        request_ids = batch.req_ids[:num_reqs]
-        if num_tokens < 0:
-            raise RuntimeError("per-layer attention batch dimensions changed")
-        if len(request_ids) != num_reqs:
-            # FULL graph capture builds synthetic decode batches before the
-            # runner has admitted any requests.  There are no compressed rows
-            # to specialize in that phase, but graph cache-write kernels must
-            # capture the same per-layer slot buffers used during replay. Keep
-            # failing closed for a real or partially populated input batch.
-            batch_num_reqs = int(getattr(batch, "num_reqs", len(batch.req_ids)))
-            if self._has_active_rows or batch_num_reqs != 0 or batch.req_ids:
-                raise RuntimeError("per-layer attention batch dimensions changed")
-            for layer in self.layer_caches:
-                base = metadata.get(layer.name)
-                slots = self._per_layer_slot_buffers.get(layer.name)
-                if (
-                    base is None
-                    or not isinstance(getattr(base, "slot_mapping", None), torch.Tensor)
-                    or slots is None
-                    or slots.numel() < num_tokens
-                    or base.slot_mapping.numel() < num_tokens
-                ):
-                    raise RuntimeError("per-layer capture slot buffers are unavailable")
-                slots[num_tokens:].fill_(-1)
-                slots[:num_tokens].copy_(base.slot_mapping[:num_tokens])
-                metadata[layer.name] = replace(base, slot_mapping=slots[:num_tokens])
-                if layer is self.speculative_cache_layer:
-                    if common is None:
-                        raise RuntimeError("MTP2 capture metadata is unavailable")
-                    common = replace(common, slot_mapping=slots[:num_tokens])
-            self._per_layer_metadata_seen = True
-            return metadata, common
-        table = batch.block_table.block_tables[self.attention_group_index]
-        native = getattr(type(table), "_ascend_pyramidkv_patch_v3_slot_mapping_original", None)
-        if not callable(native):
-            raise RuntimeError("per-layer attention requires the native slot mapping hook")
-        if self._request_offsets_cpu is None:
-            raise RuntimeError("per-layer attention offset buffers are unavailable")
-        if self._has_active_rows and not self._physical_lengths_applied:
-            raise RuntimeError("per-layer attention requires saved semantic lengths")
-        global_offsets = tuple(int(value) for value in self._request_offsets_cpu[:num_reqs])
-        batched = self._batched_per_layer_metadata(
-            metadata, common, table, request_ids, global_offsets, num_tokens, num_reqs
-        )
-        if batched is not None:
-            self._per_layer_metadata_seen = True
-            return batched
-        original_slots = table.slot_mapping.gpu[:num_tokens].clone()
-        speculative_view: tuple[list[int], tuple[int, ...], torch.Tensor, torch.Tensor] | None = None
-        try:
-            for layer in self.layer_caches:
-                offsets = tuple(
-                    self.active[request_id].semantic_anchor
-                    - dict(self.active[request_id].per_layer_physical_num_tokens or ()).get(
-                        layer.name, self.active[request_id].physical_anchor
-                    )
-                    if request_id in self.active
-                    else 0
-                    for request_id in request_ids
-                )
-                base = metadata.get(layer.name)
-                if (
-                    type(base).__name__ != "AscendMetadata"
-                    or type(base).__module__ != "vllm_ascend.attention.attention_v1"
-                    or base.seq_lens is None
-                    or base.seq_lens_list is None
-                    or base.slot_mapping is None
-                ):
-                    raise RuntimeError("per-layer attention backend metadata is unvalidated")
-                delta = [global_offset - offset for global_offset, offset in zip(global_offsets, offsets, strict=True)]
-                seq_lens = base.seq_lens.clone()
-                if any(delta):
-                    seq_lens[:num_reqs] += self._metadata_correction_tensor(
-                        layer.name + ":delta", tuple(delta), seq_lens
-                    )
-                seq_lens_list = list(base.seq_lens_list)
-                for index, correction in enumerate(delta):
-                    seq_lens_list[index] += correction
-                slots = self._per_layer_slot_buffers.get(layer.name)
-                if slots is None and not self.requires_per_layer_physical_state:
-                    slots = torch.empty(
-                        max(num_tokens, int(getattr(runner, "max_num_tokens", 0))),
-                        dtype=torch.int64,
-                        device=original_slots.device,
-                    )
-                    self._per_layer_slot_buffers[layer.name] = slots
-                if slots is None or slots.numel() < num_tokens:
-                    raise RuntimeError("per-layer attention slot buffers were not prepared before capture")
-                # Replay may use a larger captured bucket than the live batch.
-                # Never let padded cache writes reuse a previous request's slots.
-                slots[num_tokens:].fill_(-1)
-                if offsets == global_offsets:
-                    slots[:num_tokens].copy_(original_slots)
-                else:
-                    positions = runner.positions[:num_tokens]
-                    req_indices = runner.req_indices.gpu[:num_tokens]
-                    offset_tensor = self._metadata_correction_tensor(layer.name + ":offsets", offsets, positions)
-                    native(
-                        table,
-                        num_reqs,
-                        runner.query_start_loc.gpu[: num_reqs + 1],
-                        positions - offset_tensor[req_indices.long()],
-                    )
-                    slots[:num_tokens].copy_(table.slot_mapping.gpu[:num_tokens])
-                metadata[layer.name] = replace(
-                    base,
-                    seq_lens=seq_lens,
-                    seq_lens_cpu=seq_lens,
-                    seq_lens_list=seq_lens_list,
-                    slot_mapping=slots[:num_tokens],
-                )
-                if layer is self.speculative_cache_layer:
-                    speculative_view = delta, offsets, seq_lens, slots[:num_tokens]
-        finally:
-            table.slot_mapping.gpu[:num_tokens].copy_(original_slots)
-        if self.speculative_cache_layer is not None:
-            if speculative_view is None or common is None:
-                raise RuntimeError("MTP2 per-layer attention metadata is incomplete")
-            delta, offsets, _, slots = speculative_view
-            common = self._speculative_common_metadata(
-                common,
-                delta,
-                offsets,
-                slots,
-                num_reqs,
-            )
-        self._per_layer_metadata_seen = True
-        return metadata, common
-
-    def _speculative_common_metadata(
-        self,
-        common: Any,
-        delta: list[int],
-        offsets: tuple[int, ...],
-        slots: torch.Tensor,
-        num_reqs: int,
-    ) -> Any:
-        required = (
-            "seq_lens",
-            "_seq_lens_cpu",
-            "seq_lens_cpu_upper_bound",
-            "slot_mapping",
-        )
-        if any(not hasattr(common, name) for name in required):
-            raise RuntimeError("MTP2 common attention metadata ABI changed")
-
-        def adjusted(field: str, value: Any, corrections: list[int] | tuple[int, ...]) -> Any:
-            if value is None:
-                return None
-            if not isinstance(value, torch.Tensor) or value.numel() < num_reqs:
-                raise RuntimeError("MTP2 sequence-length metadata ABI changed")
-            result = value.clone()
-            if any(corrections):
-                result[:num_reqs] += self._metadata_correction_tensor("mtp-common:" + field, tuple(corrections), result)
-            return result
-
-        changes = {
-            "seq_lens": adjusted("seq_lens", common.seq_lens, delta),
-            "_seq_lens_cpu": adjusted("_seq_lens_cpu", common._seq_lens_cpu, delta),
-            "seq_lens_cpu_upper_bound": adjusted(
-                "seq_lens_cpu_upper_bound",
-                common.seq_lens_cpu_upper_bound,
-                delta,
-            ),
-            "slot_mapping": slots,
-        }
-        if hasattr(common, "seq_lens_cpu"):
-            changes["seq_lens_cpu"] = adjusted("seq_lens_cpu", common.seq_lens_cpu, delta)
-        if hasattr(common, "num_computed_tokens_cpu"):
-            changes["num_computed_tokens_cpu"] = adjusted(
-                "num_computed_tokens_cpu",
-                common.num_computed_tokens_cpu,
-                tuple(-offset for offset in offsets),
-            )
-        try:
-            return replace(common, **changes)
-        except (TypeError, ValueError) as error:
-            raise RuntimeError("MTP2 common attention metadata cannot be specialized by layer") from error
+        return self.metadata.per_layer_attention_metadata(result, num_tokens, num_reqs)
 
     def begin_per_layer_step(self, scheduler_output: Any) -> None:
-        enabled = self.requires_per_layer_physical_state or self._has_per_layer_rows
-        scheduled = getattr(scheduler_output, "num_scheduled_tokens", {})
-        self._per_layer_step_requires_metadata = enabled and any(int(tokens) > 0 for tokens in scheduled.values())
-        if self._per_layer_step_requires_metadata:
-            self._per_layer_metadata_seen = False
+        self.metadata.begin_per_layer_step(scheduler_output)
 
     def finish_per_layer_step(self) -> None:
-        try:
-            if self._per_layer_step_requires_metadata and not self._per_layer_metadata_seen:
-                raise RuntimeError("per-layer attention metadata hook was bypassed by the host")
-        finally:
-            self._per_layer_step_requires_metadata = False
-
-    def _sync_request_offset_rows(self) -> None:
-        if self.runner is None or self._request_offsets_cpu is None or self._request_offsets_device is None:
-            return
-        num_reqs = self.runner.input_batch.num_reqs
-        offsets = tuple(
-            self.active[request_id].removed_tokens if request_id in self.active else 0
-            for request_id in self.runner.input_batch.req_ids[:num_reqs]
-        )
-        self._has_per_layer_rows = any(
-            self.active[request_id].per_layer_physical_num_tokens is not None
-            for request_id in self.runner.input_batch.req_ids[:num_reqs]
-            if request_id in self.active
-        )
-        if offsets == self._offset_row_snapshot:
-            return
-        rows = max(len(self._offset_row_snapshot), num_reqs)
-        self._request_offsets_cpu[:rows].zero_()
-        if offsets:
-            self._request_offsets_cpu[:num_reqs].copy_(torch.tensor(offsets, dtype=torch.int64))
-        self._request_offsets_device[:rows].copy_(self._request_offsets_cpu[:rows], non_blocking=True)
-        self._offset_row_snapshot = offsets
-        self._has_active_rows = any(offsets)
-
-
-def _supports_mtp2(vllm_config: Any) -> bool:
-    """Gate the unqualified MTP2 path behind explicit experimental opt-in.
-
-    Compression is armed only at the exact prompt boundary; subsequent
-    speculative decode steps cannot trigger another transaction because their
-    optimistic KV tail can roll back after acceptance. The attention manager
-    sees physical lengths, while Mamba state remains in semantic length space.
-    """
-    speculative = getattr(vllm_config, "speculative_config", None)
-    if speculative is None:
-        return False
-    if os.getenv("VLLM_ASCEND_PYRAMIDKV_EXPERIMENTAL_MTP2") != "1":
-        return False
-    model = vllm_config.model_config
-    text_config = getattr(model, "hf_text_config", None)
-    return (
-        getattr(speculative, "method", None) == "mtp"
-        and getattr(speculative, "num_speculative_tokens", None) == 2
-        and not getattr(speculative, "num_speculative_tokens_per_batch_size", None)
-        and bool(getattr(model, "is_hybrid", False))
-        and getattr(text_config, "model_type", None) in {"qwen3_5_text", "qwen3_5_moe_text"}
-        and getattr(vllm_config.cache_config, "mamba_cache_mode", None) == "align"
-    )
-
-
-def _common_compatibility_reasons(vllm_config: Any, runner: Any) -> tuple[str, ...]:
-    reasons: list[str] = []
-    cache_config = vllm_config.cache_config
-    # Prefix hits may share immutable source blocks with other requests. The
-    # scheduler reserves disjoint destination blocks and swaps the requesting
-    # row only after the worker has copied into them; its cache_blocks hook
-    # also prevents private compacted KV from receiving semantic prefix hashes.
-    block_size = int(cache_config.block_size)
-    allowed_block_sizes = _allowed_scheduler_block_sizes(vllm_config)
-    if block_size not in allowed_block_sizes:
-        reasons.append(f"logical KV block size must be one of {sorted(allowed_block_sizes)}, got {block_size}")
-    if getattr(cache_config, "cache_dtype", "auto") not in {
-        "auto",
-        "bfloat16",
-        "float16",
-    }:
-        reasons.append("quantized KV cache is unsupported")
-    if vllm_config.speculative_config is not None and not _supports_mtp2(vllm_config):
-        reasons.append(
-            "speculative decoding is unqualified; experimental Qwen3.5 MTP2 "
-            "requires mamba_cache_mode='align' and explicit opt-in"
-        )
-    if vllm_config.kv_transfer_config is not None:
-        reasons.append("KV transfer is unsupported")
-    # The scheduler adapter freezes a request after arming its private-block
-    # copy. It makes the block-table switch only after the accepted worker
-    # output has acknowledged the transaction, so another in-flight batch
-    # cannot decode from a half-written destination.
-    model_config = vllm_config.model_config
-    if bool(getattr(model_config, "is_hybrid", False)):
-        text_config = getattr(model_config, "hf_text_config", None)
-        model_type = str(getattr(text_config, "model_type", ""))
-        if model_type not in {"qwen3_5_text", "qwen3_5_moe_text"}:
-            reasons.append("only Qwen3.5-style full-attention/Gated-DeltaNet hybrids are supported")
-        if getattr(cache_config, "mamba_cache_mode", "none") not in {
-            "none",
-            "align",
-        }:
-            reasons.append("hybrid compression requires mamba_cache_mode='none' or 'align'")
-    if bool(getattr(model_config, "use_mla", False)):
-        reasons.append("MLA cache layouts are unsupported")
-    if bool(getattr(model_config, "is_encoder_decoder", False)):
-        reasons.append("encoder-decoder models are unsupported")
-    aux_output_config = getattr(vllm_config, "aux_output_config", None)
-    if bool(getattr(aux_output_config, "enable_return_routed_experts", False)):
-        reasons.append("routed-expert output is unsupported on this host ABI")
-    parallel = vllm_config.parallel_config
-    tensor_parallel_size = int(getattr(parallel, "tensor_parallel_size", 1))
-    text_config = getattr(model_config, "hf_text_config", None)
-    num_kv_heads = int(getattr(text_config, "num_key_value_heads", 0))
-    if tensor_parallel_size <= 0 or num_kv_heads % tensor_parallel_size:
-        reasons.append("tensor parallel size must be positive and divide the model KV heads")
-    for name, attr in (
-        ("pipeline parallel", "pipeline_parallel_size"),
-        ("data parallel", "data_parallel_size"),
-        ("prefill context parallel", "prefill_context_parallel_size"),
-        ("decode context parallel", "decode_context_parallel_size"),
-    ):
-        size = int(getattr(parallel, attr, 1))
-        if size != 1:
-            reasons.append(f"{name} size must be one, got {size}")
-    runner_type = type(runner)
-    if runner_type.__module__ != "vllm_ascend.worker.model_runner_v1" or runner_type.__name__ != "NPUModelRunner":
-        reasons.append("the standard v1 Ascend NPUModelRunner is required")
-    if bool(getattr(runner, "use_sparse", False)):
-        reasons.append("Ascend sparse attention is unsupported")
-    if bool(getattr(runner, "use_compress", False)):
-        reasons.append("model-native Ascend compression is unsupported")
-    return tuple(reasons)
-
-
-def _allowed_scheduler_block_sizes(vllm_config: Any) -> frozenset[int]:
-    """Return fail-closed logical page sizes for a supported model family.
-
-    Ascend keeps 128-token kernel cache blocks. Its hybrid cache adapter may
-    promote the full-attention manager page to 1152 or 2048 tokens,
-    representing one logical attention block as 9 or 16 consecutive kernel
-    blocks. The scheduler's cross-group LCM alignment is validated separately.
-    """
-    model_config = getattr(vllm_config, "model_config", None)
-    if not bool(getattr(model_config, "is_hybrid", False)):
-        return frozenset({ASCEND_BLOCK_SIZE})
-    text_config = getattr(model_config, "hf_text_config", None)
-    model_type = str(getattr(text_config, "model_type", ""))
-    if model_type in {"qwen3_5_text", "qwen3_5_moe_text"}:
-        return frozenset({ASCEND_BLOCK_SIZE, 1152, 2048})
-    return frozenset({ASCEND_BLOCK_SIZE})
-
-
-def _find_full_attention_group(groups: Any) -> int:
-    """Return the sole full-attention group, allowing Mamba companion groups."""
-    from vllm.v1.kv_cache_interface import (
-        FullAttentionSpec,
-        MambaSpec,
-        UniformTypeKVCacheSpecs,
-    )
-
-    # A few downstream host-contract tests intentionally use an opaque object
-    # for the legacy single-group layout. Real vLLM groups always expose a
-    # ``kv_cache_spec``; keep that narrow test-double compatibility without
-    # weakening validation for hybrid layouts.
-    if len(groups) == 1 and not hasattr(groups[0], "kv_cache_spec"):
-        return 0
-
-    full_groups: list[int] = []
-    unsupported: list[str] = []
-    for index, group in enumerate(groups):
-        spec = group.kv_cache_spec
-        specs = tuple(spec.kv_cache_specs.values()) if isinstance(spec, UniformTypeKVCacheSpecs) else (spec,)
-        if all(isinstance(item, FullAttentionSpec) for item in specs):
-            full_groups.append(index)
-        elif not all(isinstance(item, MambaSpec) for item in specs):
-            unsupported.append(type(spec).__name__)
-    if unsupported:
-        raise RuntimeError(
-            "Ascend KV compression supports only full-attention plus optional "
-            "Mamba groups; found " + ", ".join(unsupported)
-        )
-    if len(full_groups) != 1:
-        raise RuntimeError("Ascend KV compression requires exactly one full-attention KV group")
-    return full_groups[0]
-
-
-def _unpack_layer_cache(layer_name: str, layer: Any) -> tuple[torch.Tensor, torch.Tensor]:
-    cache = getattr(layer, "kv_cache", None)
-    if isinstance(cache, list) and len(cache) == 1:
-        cache = cache[0]
-    impl = getattr(layer, "impl", None)
-    unpack = getattr(impl, "_unpack_kv_cache", None)
-    if callable(unpack):
-        k_cache, v_cache = unpack(cache)
-    elif isinstance(cache, (tuple, list)) and len(cache) == 2:
-        k_cache, v_cache = cache
-    else:
-        raise RuntimeError(f"attention layer {layer_name!r} does not expose dense Ascend K/V views")
-    if not isinstance(k_cache, torch.Tensor) or not isinstance(v_cache, torch.Tensor):
-        raise RuntimeError(f"attention layer {layer_name!r} K/V bindings are invalid")
-    return k_cache, v_cache
-
-
-def _validate_cache_tensor(
-    layer_name: str,
-    kind: str,
-    cache: torch.Tensor,
-    model: ModelShape,
-    expected_kv_heads: int | None = None,
-    expected_block_size: int = ASCEND_BLOCK_SIZE,
-) -> None:
-    expected_tail = (
-        expected_block_size,
-        model.num_kv_heads if expected_kv_heads is None else expected_kv_heads,
-        model.head_dim,
-    )
-    if cache.ndim != 4 or tuple(cache.shape[1:]) != expected_tail:
-        raise RuntimeError(
-            f"attention layer {layer_name!r} {kind} cache shape {tuple(cache.shape)} does not end in {expected_tail}"
-        )
-    if cache.dtype not in {torch.bfloat16, torch.float16}:
-        raise RuntimeError(f"attention layer {layer_name!r} {kind} cache dtype {cache.dtype} is unsupported")
-    inner_stride = (expected_tail[1] * expected_tail[2], expected_tail[2], 1)
-    page_elements = expected_tail[0] * inner_stride[0]
-    if cache.stride()[1:] != inner_stride or cache.stride(0) < page_elements:
-        raise RuntimeError(
-            f"attention layer {layer_name!r} {kind} cache must have contiguous "
-            "inner blocks and a nonoverlapping page stride"
-        )
-
-
-def _validate_method_runtime_spec(name: str, spec: MethodRuntimeSpec) -> None:
-    numeric = (
-        spec.compression_threshold_tokens,
-        spec.required_recompute_tokens,
-        spec.max_physical_num_tokens,
-    )
-    if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in numeric):
-        raise ValueError(f"compression method {name!r} exposes invalid runtime limits")
-    if spec.max_physical_num_tokens >= spec.compression_threshold_tokens:
-        raise ValueError(f"compression method {name!r} maximum must be below its threshold")
-    minimum = spec.min_output_tokens_for_compression
-    if isinstance(minimum, bool) or not isinstance(minimum, int) or minimum < 0:
-        raise ValueError(f"compression method {name!r} exposes an invalid output threshold")
+        self.metadata.finish_per_layer_step()
 
 
 def _request_max_tokens(request: Any) -> int:
@@ -1232,10 +552,6 @@ def _request_max_tokens(request: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise RuntimeError("current vLLM worker request must expose a non-negative output limit")
     return value
-
-
-def _blocks_for_tokens(num_tokens: int, block_size: int) -> int:
-    return (num_tokens + block_size - 1) // block_size
 
 
 def _expand_scheduler_block_ids(
@@ -1253,9 +569,3 @@ def _expand_scheduler_block_ids(
         dtype=torch.long,
     )
     return (ids.unsqueeze(1) * cache_blocks_per_scheduler_block + offsets).reshape(-1)
-
-
-def _shift_positions(positions, request_indices, request_offsets, output):
-    """Keep semantic RoPE positions intact; map only physical cache writes."""
-    torch.sub(positions, request_offsets.index_select(0, request_indices.to(torch.long)), out=output)
-    return output

@@ -17,3 +17,18 @@ class CompressionPlan:
     physical_anchor: int
     source_block_ids: tuple[int, ...]
     destination_block_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class ActiveCompression:
+    semantic_anchor: int
+    physical_anchor: int
+    per_layer_physical_num_tokens: tuple[tuple[str, int], ...] | None = None
+
+    @property
+    def removed_tokens(self) -> int:
+        return self.semantic_anchor - self.physical_anchor
+
+
+def blocks_for_tokens(num_tokens: int, block_size: int) -> int:
+    return (num_tokens + block_size - 1) // block_size

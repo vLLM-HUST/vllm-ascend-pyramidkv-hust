@@ -8,8 +8,8 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from vllm_ascend_pyramidkv.provider import (
-    PyramidKVAscendConfig,
+from vllm_ascend_pyramidkv.algorithm import (
+    PyramidKVConfig,
     select_pyramid_kv,
 )
 
@@ -73,7 +73,7 @@ def test_qwen_grouped_gqa_matches_repeated_oracle_on_npu() -> None:
     if not hasattr(torch, "npu") or not torch.npu.is_available():
         pytest.skip("Ascend NPU is not available")
 
-    config = PyramidKVAscendConfig.from_dict(
+    config = PyramidKVConfig.from_dict(
         {
             "max_capacity_prompt": 512,
             "min_compression_prompt_tokens": 512,

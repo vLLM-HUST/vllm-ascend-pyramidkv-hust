@@ -3,7 +3,7 @@
 Pass an immutable checkout of the previous method.py as --baseline-source.
 The baseline and candidate consume identical queries/pages in one process;
 whole-cache equality includes source pages, destination padding, and MTP.
-Historical shared contract imports are normalized to local value types only;
+Historical contract and algorithm imports are normalized to their current modules;
 this compares method algorithms, not the historical shared runtime.
 """
 
@@ -36,7 +36,7 @@ from vllm_ascend_pyramidkv.adapter.transaction import CompressionPlan
 def load_baseline(path: Path):
     """Load trusted historical source using the local, equivalent value types.
 
-    Only the three former contract imports are normalized. Algorithm statements
+    Only former contract and pure-algorithm imports are normalized. Algorithm statements
     are left intact; the diagnostic records the original file hash and that this
     is a local-contract comparison, not an execution of the old shared adapter.
     """
@@ -50,6 +50,21 @@ def load_baseline(path: Path):
             continue
         if node.module in imports:
             node.module = imports[node.module]
+        elif node.module == "vllm_ascend_pyramidkv.provider":
+            allowed = {
+                "PyramidKVAscendConfig",
+                "PyramidKVSelection",
+                "select_pyramid_indices",
+                "materialize_pyramid_kv",
+                "select_pyramid_kv",
+            }
+            if any(name.name not in allowed for name in node.names):
+                raise ValueError("baseline imports an unsupported legacy provider API")
+            node.module = "vllm_ascend_pyramidkv.algorithm"
+            for name in node.names:
+                if name.name == "PyramidKVAscendConfig":
+                    name.asname = name.asname or name.name
+                    name.name = "PyramidKVConfig"
         elif node.module == "vllm_ascend_kvcompress.methods":
             if len(node.names) != 1 or node.names[0].name != "METHOD_API_VERSION":
                 raise ValueError("baseline imports an unsupported shared method API")
@@ -174,7 +189,7 @@ def run(args):
         "iterations": args.iterations,
         "order": "alternating baseline/candidate",
         "geometry": "BF16, local 8 Q / 1 KV head, dim 256, 10 target + 1 MTP layers",
-        "baseline_contracts": "local adapter value types; historical contract imports normalized",
+        "baseline_contracts": "local adapter value types and pure algorithm; historical imports normalized",
         "sources": {
             str(p): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in (

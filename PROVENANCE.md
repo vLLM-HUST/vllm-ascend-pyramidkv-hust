@@ -7,12 +7,24 @@
 The local adaptation removes shared-package imports, external method dispatch,
 TriAttention calibration and scoring kernels. The generic position operation,
 scheduler lifecycle, host bridges and PR33 per-layer metadata implementation
-are maintained here. `method.py` binds local types; the existing `provider.py`
-algorithm is unchanged. See [NOTICE](NOTICE) for Apache/MIT attribution.
+are maintained here. `method.py` binds local types. Version 0.4 moves the unchanged
+configuration and selection arithmetic from `provider.py` to `algorithm.py`,
+renaming `PyramidKVAscendConfig` to `PyramidKVConfig`. See [NOTICE](NOTICE) for
+Apache/MIT attribution.
 
 The standalone version uses its own general entry point, configuration and
 activation. Earlier shared-host statements below describe the historical
 migration stages, not current dependencies or qualification of this adapter.
+
+## Runtime simplification (0.4)
+
+The historical schema-v1 provider, registry and host contract fallback are
+removed. Shared host checks now live in `adapter/host_validation.py`; physical
+offsets, immutable corrections and graph slot buffers live in
+`adapter/metadata.py`. Scheduler and worker share active-anchor values through
+`adapter/transaction.py`. This changes ownership, not the current algorithm or
+host qualification scope. Historical file mappings and hashes below remain
+records of the initial extraction, not current installation paths.
 
 
 Source archives:
@@ -52,7 +64,7 @@ The preserved `final` and `v2` branches are frozen audit and migration inputs.
 They are not installation sources and should not be deleted or renamed before
 an independently reproducible alpha is tagged here.
 
-## Recovered file mapping
+## Historical recovered file mapping
 
 The initial extraction uses the identical provider blob present at both the
 legacy PR audit head and the focused v2 head, then changes only imports and
@@ -66,10 +78,10 @@ type boundaries needed to make the new package independently importable.
 | `tests/ut/kv_cache_compression/test_pyramidkv.py` | `385371776af02a359f94b48cd5f43fe32fa9c832` | `tests/` | CPU-safe algorithm, compatibility, state, and registry semantics restored |
 | `tests/ut/kv_cache_compression/test_registry.py` | `d776b7e7f7aab40778febce85c6d553c8ed1b266` | `tests/test_registry.py` | Registry fail-closed semantics restored |
 
-The fallback schema-v1 data classes in `legacy_contracts.py` derive from the
-Apache-2.0 provider-neutral contract in Core PR #232. Standalone tests use
-them when vLLM is absent; active installations resolve the canonical classes
-from the paired current host through `contracts.py`.
+The former fallback schema-v1 data classes in `legacy_contracts.py` derived from
+the Apache-2.0 provider-neutral contract in Core PR #232. The initial extraction
+used them without vLLM and resolved host classes through `contracts.py`. Both
+modules and their legacy runtime were retired in 0.4.
 
 The initial extracted and formatted `provider.py` has SHA-256
 `949e6a2f612618e19b35372402ce140bb0f3fced8a3401e3a4854df6ba210c16`.
