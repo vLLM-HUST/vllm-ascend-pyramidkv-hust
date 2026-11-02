@@ -1,7 +1,7 @@
 # vLLM Ascend PyramidKV HUST
 
 **PyramidKV is a standalone, default-off vLLM/Ascend plugin.** Version
-`0.4.0.dev0` owns its scheduler, worker, transaction and metadata adapter. It
+`0.4.0rc1` owns its scheduler, worker, transaction and metadata adapter. It
 neither installs nor imports `vllm-ascend-kvcompress-hust`, and does not need that
 plugin at runtime. The general entry point is
 `vllm.general_plugins:ascend_pyramidkv`; importing this package or discovering
@@ -14,6 +14,10 @@ seams fail closed. A manifest version range is a discovery filter, not a promise
 that every vLLM/Ascend combination works. See the [support matrix](docs/support-matrix.md).
 
 ## Install and activate
+
+Public candidate artifacts and checksum-bound installation are documented in the
+[0.4.0rc1 release notes](docs/releases/0.4.0rc1.md). This release keeps the
+qualified host boundary; current-version effect evaluation remains open.
 
 Provision a matched vLLM, vLLM-Ascend, torch/torch-npu and CANN stack first.
 The wheel intentionally does not ask pip to replace hardware-specific host
