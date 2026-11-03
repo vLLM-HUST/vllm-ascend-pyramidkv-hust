@@ -68,7 +68,11 @@ def _legacy_repeated_gqa_selection(
     return compact_key, compact_value, selected
 
 
-def test_qwen_grouped_gqa_matches_repeated_oracle_on_npu() -> None:
+@pytest.mark.parametrize(
+    "query_heads,kv_heads,head_dim,tokens,layers",
+    [(40, 8, 128, 1024, 48), (20, 4, 128, 7168, 48), (8, 1, 256, 7168, 10)],
+)
+def test_qwen_grouped_gqa_matches_repeated_oracle_on_npu(query_heads, kv_heads, head_dim, tokens, layers) -> None:
     pytest.importorskip("torch_npu")
     if not hasattr(torch, "npu") or not torch.npu.is_available():
         pytest.skip("Ascend NPU is not available")
@@ -87,18 +91,18 @@ def test_qwen_grouped_gqa_matches_repeated_oracle_on_npu() -> None:
         }
     )
     generator = torch.Generator().manual_seed(20260903)
-    query = torch.randn(1, 40, 1024, 128, generator=generator).to(device="npu", dtype=torch.bfloat16)
-    key = torch.randn(1, 8, 1024, 128, generator=generator).to(device="npu", dtype=torch.bfloat16)
-    value = torch.randn(1, 8, 1024, 128, generator=generator).to(device="npu", dtype=torch.bfloat16)
-    retained_tokens = config.retained_tokens(1024, 47, 48)
+    query = torch.randn(1, query_heads, tokens, head_dim, generator=generator).to(device="npu", dtype=torch.bfloat16)
+    key = torch.randn(1, kv_heads, tokens, head_dim, generator=generator).to(device="npu", dtype=torch.bfloat16)
+    value = torch.randn(1, kv_heads, tokens, head_dim, generator=generator).to(device="npu", dtype=torch.bfloat16)
+    retained_tokens = config.retained_tokens(tokens, layers - 1, layers)
 
     actual = select_pyramid_kv(
         query,
         key,
         value,
         config,
-        layer_index=47,
-        num_hidden_layers=48,
+        layer_index=layers - 1,
+        num_hidden_layers=layers,
     )
     expected_key, expected_value, expected_indices = _legacy_repeated_gqa_selection(
         query,

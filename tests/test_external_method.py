@@ -274,6 +274,7 @@ def test_target_compatibility_is_explicit_and_fail_closed(monkeypatch) -> None:
         attention_layer_indices=tuple(range(3, 40, 4)),
     )
     config = _config()
+    config.model_config.enforce_eager = False
     method = PyramidKVMethod(_options(), config, shape)
     backend = type("AscendAttentionBackend", (), {})
     runner = SimpleNamespace(
@@ -355,7 +356,7 @@ def test_qwen25_rejects_unqualified_geometry(monkeypatch, change):
 @pytest.mark.parametrize(
     "section, field, value",
     [
-        ("parallel_config", "tensor_parallel_size", 2),
+        ("parallel_config", "tensor_parallel_size", 4),
         ("model_config", "enforce_eager", False),
         ("model_config", "dtype", torch.float16),
         ("model_config", "quantization", "awq"),
@@ -375,4 +376,57 @@ def test_qwen25_rejects_unqualified_execution(monkeypatch, section, field, value
         setattr(config, section, value)
     else:
         setattr(getattr(config, section), field, value)
+    assert PyramidKVMethod(_options(), config, shape).compatibility_reasons(runner)
+
+
+@pytest.mark.parametrize("hybrid", [False, True])
+def test_both_official_models_accept_tp2_eager_without_speculation(monkeypatch, hybrid):
+    shape, config, runner = _qwen25_profile()
+    config.parallel_config.tensor_parallel_size = 2
+    if hybrid:
+        shape = ModelShape(
+            "qwen3_5_moe_text",
+            40,
+            16,
+            2,
+            256,
+            10_000_000.0,
+            False,
+            rotary_dim=64,
+            attention_layer_indices=tuple(range(3, 40, 4)),
+        )
+    monkeypatch.setattr(torch.version, "cann", "9.1.0", raising=False)
+    assert PyramidKVMethod(_options(), config, shape).compatibility_reasons(runner) == ()
+
+
+@pytest.mark.parametrize(
+    "graph, eager, speculative",
+    [
+        ("FULL_AND_PIECEWISE", False, None),
+        ("NONE", True, SimpleNamespace(method="mtp", num_speculative_tokens=2)),
+        ("FULL_AND_PIECEWISE", True, SimpleNamespace(method="mtp", num_speculative_tokens=2)),
+        ("NONE", False, None),
+    ],
+)
+def test_qwen35_rejects_mixed_eager_graph_and_speculative_profiles(monkeypatch, graph, eager, speculative):
+    shape = ModelShape(
+        "qwen3_5_moe_text",
+        40,
+        16,
+        2,
+        256,
+        10_000_000.0,
+        False,
+        rotary_dim=64,
+        attention_layer_indices=tuple(range(3, 40, 4)),
+    )
+    config = _config()
+    config.cache_config.enable_prefix_caching = True
+    config.model_config.enforce_eager = eager
+    config.speculative_config = speculative
+    runner = SimpleNamespace(
+        compilation_config=SimpleNamespace(cudagraph_mode=SimpleNamespace(name=graph)),
+        attn_backend=type("AscendAttentionBackend", (), {}),
+    )
+    monkeypatch.setattr(torch.version, "cann", "9.1.0", raising=False)
     assert PyramidKVMethod(_options(), config, shape).compatibility_reasons(runner)

@@ -1,7 +1,8 @@
 # Standalone support boundary
 
-The independent adapter admits two exact profiles on the pinned host below.
-Qwen2.5 support is added after 0.4.0rc1; it is absent from that public wheel.
+The independent adapter admits exact model/execution profiles on the pinned host below.
+Qwen2.5 and eager Qwen3.5 support are added after 0.4.0rc1; they are absent
+from that public wheel. The original graph/MTP2 profile is:
 
 | Dimension | Accepted target |
 | --- | --- |
@@ -17,12 +18,20 @@ Qwen2.5 support is added after 0.4.0rc1; it is absent from that public wheel.
 
 The Qwen2.5 profile accepts only official `Qwen/Qwen2.5-14B-Instruct`:
 48 full-attention layers, Q/KV heads 40/8, head and rotary dimensions 128,
-no RoPE scaling, BF16, TP=1, eager execution and no speculative decoding.
+no RoPE scaling, BF16, TP=1 or 2, eager execution and no speculative decoding.
 It requires the same APC/async/chunked scheduling and standard Ascend backend.
 Use [`scripts/qwen25/serve.sh`](../scripts/qwen25/serve.sh) with
 `MODEL_PATH` and `PYRAMIDKV_ENABLED=0` or `1`. It fixes the historical
 8192 context, 2048 batched tokens, 32 sequences, 128-token blocks and 0.8
 memory utilization; its compression configuration is 512/beta20.
+Qwen3.5 also admits TP2 eager execution without speculation. Mixing eager with
+MTP or enabling graphs without the qualified MTP2 configuration is rejected.
+The common [model-comparison launcher](../scripts/model-comparison/serve.sh)
+uses TP2, eager, no MTP, text-only requests, and a 4096-token batch budget for
+both models. A 2048 budget would leave less than one 2048-token hybrid alignment
+block after scheduling decode, preventing admission of another long prefill.
+The native hybrid logical page layout is retained.
+
 This admission boundary alone does not certify task quality or speedup.
 
 The reproduced source pair is vLLM

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import inspect
 from importlib.metadata import version
+from types import SimpleNamespace
 
 import pytest
 from packaging.specifiers import SpecifierSet
@@ -39,6 +40,19 @@ def test_scheduler_and_cache_manager_seams_match_current_host() -> None:
         "num_new_tokens",
     )
     assert _parameter_names(KVCacheManager.free) == ("self", "request")
+
+
+def test_hybrid_prefill_requires_budget_beyond_one_aligned_block():
+    from vllm.v1.core.sched.scheduler import Scheduler
+
+    scheduler = SimpleNamespace(cache_config=SimpleNamespace(block_size=2048), use_eagle=False)
+    request = SimpleNamespace(num_computed_tokens=0, num_prompt_tokens=7168, num_tokens=7168)
+    # Real host characterization: a decode batch leaves no complete prefill
+    # block when the entire token budget equals one Mamba alignment block.
+    assert Scheduler._mamba_block_aligned_split(scheduler, request, 2047) == 0
+    assert Scheduler._mamba_block_aligned_split(scheduler, request, 2016) == 0
+    assert Scheduler._mamba_block_aligned_split(scheduler, request, 4095) == 2048
+    assert Scheduler._mamba_block_aligned_split(scheduler, request, 4064) == 2048
 
 
 def test_ascend_v1_worker_seams_match_current_host() -> None:

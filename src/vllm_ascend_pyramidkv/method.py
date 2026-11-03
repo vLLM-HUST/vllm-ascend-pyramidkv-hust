@@ -186,26 +186,33 @@ class PyramidKVMethod(KVCompressionMethod):
         if getattr(model, "quantization", None) is not None:
             reasons.append("model quantization is unsupported")
         parallel = self.vllm_config.parallel_config
-        expected_tp = 1 if dense else 2
-        if int(getattr(parallel, "tensor_parallel_size", 1)) != expected_tp:
-            reasons.append(f"the staged profile requires TP={expected_tp}")
+        allowed_tp = (1, 2) if dense else (2,)
+        if int(getattr(parallel, "tensor_parallel_size", 1)) not in allowed_tp:
+            reasons.append(f"the staged profile requires TP in {allowed_tp}")
         cache = self.vllm_config.cache_config
         if not dense and getattr(cache, "mamba_cache_mode", None) != "align":
             reasons.append("Qwen3.5 requires mamba_cache_mode='align'")
         if not bool(getattr(cache, "enable_prefix_caching", False)):
             reasons.append("the staged target requires prefix caching")
         speculative = getattr(self.vllm_config, "speculative_config", None)
+        eager = bool(getattr(model, "enforce_eager", False))
+        eager_profile = dense or (eager and speculative is None)
         if dense:
             if speculative is not None:
                 reasons.append("Qwen2.5 does not support speculative decoding")
             if not bool(getattr(model, "enforce_eager", False)):
                 reasons.append("Qwen2.5 requires enforce_eager")
-        elif speculative is None or (
-            getattr(speculative, "method", None) != "mtp"
-            or getattr(speculative, "num_speculative_tokens", None) != 2
-            or getattr(speculative, "num_speculative_tokens_per_batch_size", None)
+        elif not eager_profile and (
+            speculative is None
+            or (
+                getattr(speculative, "method", None) != "mtp"
+                or getattr(speculative, "num_speculative_tokens", None) != 2
+                or getattr(speculative, "num_speculative_tokens_per_batch_size", None)
+            )
         ):
             reasons.append("the staged target requires Qwen3.5 MTP2")
+        if not dense and eager and speculative is not None:
+            reasons.append("Qwen3.5 MTP2 requires graph execution without enforce_eager")
 
         scheduler = self.vllm_config.scheduler_config
         if not bool(getattr(scheduler, "async_scheduling", False)):
@@ -214,7 +221,7 @@ class PyramidKVMethod(KVCompressionMethod):
             reasons.append("the staged target requires chunked prefill")
 
         mode = getattr(getattr(runner, "compilation_config", None), "cudagraph_mode", None)
-        expected_mode = "NONE" if dense else "FULL_AND_PIECEWISE"
+        expected_mode = "NONE" if eager_profile else "FULL_AND_PIECEWISE"
         if getattr(mode, "name", str(mode)) != expected_mode:
             reasons.append(f"the staged target requires {expected_mode} execution")
         backend = getattr(runner, "attn_backend", None)
