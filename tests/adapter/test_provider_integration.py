@@ -326,7 +326,14 @@ def test_speculative_worker_requires_scheduler_transaction() -> None:
     assert provider.method.last_request is None
 
 
-def test_worker_commit_truncates_tables_and_activates_offsets() -> None:
+@pytest.mark.parametrize("rank", [0, 1])
+def test_worker_commit_truncates_tables_and_activates_offsets(monkeypatch, caplog, rank) -> None:
+    from vllm_ascend_pyramidkv.adapter import worker
+
+    monkeypatch.setattr(torch.distributed, "is_initialized", lambda: True)
+    monkeypatch.setattr(torch.distributed, "get_rank", lambda: rank)
+    monkeypatch.setattr(worker.logger, "handlers", [caplog.handler])
+    caplog.set_level("INFO", logger=worker.logger.name)
     provider = _provider()
     block_table = _RecordingBlockTable()
     request = SimpleNamespace(block_ids=([2, 0, 3],))
@@ -347,6 +354,7 @@ def test_worker_commit_truncates_tables_and_activates_offsets() -> None:
     assert request.block_ids == ([50],)
     assert block_table.added == (([50],), 0)
     assert provider.active["r"] == ActiveCompression(300, 128)
+    assert any(record.getMessage().endswith(f"worker_rank={rank}") for record in caplog.records)
 
 
 def test_worker_commit_preserves_non_attention_group_tables() -> None:

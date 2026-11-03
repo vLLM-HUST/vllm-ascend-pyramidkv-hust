@@ -1,17 +1,29 @@
 # vLLM Ascend PyramidKV HUST
 
-**PyramidKV is a standalone, default-off vLLM/Ascend plugin.** Version
-`0.4.0rc1` owns its scheduler, worker, transaction and metadata adapter. It
+**PyramidKV is a standalone, default-off vLLM/Ascend plugin.** The `0.4` line
+owns its scheduler, worker, transaction and metadata adapter. It
 neither installs nor imports `vllm-ascend-kvcompress-hust`, and does not need that
 plugin at runtime. The general entry point is
 `vllm.general_plugins:ascend_pyramidkv`; importing this package or discovering
 its disabled entry point does not import PyTorch or vLLM.
 
-The serving compatibility target remains **Qwen/Qwen3.5-35B-A3B**, BF16, TP=2,
+The Qwen3.5 serving profile is **Qwen/Qwen3.5-35B-A3B**, BF16, TP=2,
 CANN 9.1, APC, MTP2, async scheduling, chunked prefill,
 `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. Unsupported model/cache/host
 seams fail closed. A manifest version range is a discovery filter, not a promise
 that every vLLM/Ascend combination works. See the [support matrix](docs/support-matrix.md).
+
+The current source candidate `0.4.0rc2.dev0` additionally admits exact
+Qwen2.5-14B BF16 TP1/TP2 eager and Qwen3.5-35B TP2 eager/no-MTP profiles.
+The [TP1 launcher](scripts/qwen25/serve.sh) retains historical settings;
+the [shared TP2 launcher](scripts/model-comparison/serve.sh) uses a 4096-token
+batch budget to fit hybrid prefill alignment alongside decode.
+The published 0.4.0rc1 release is the earlier Qwen3.5 graph/MTP2 candidate.
+See the [matched TP1 diagnostic report](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/51c6238fb7605db7bd8aeef506465cac70d82164/reports/pyramidkv-qwen25-matched-20261103)
+for source identity, limitations and raw-data verification.
+The [single-round model comparison](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/6c136e521fa6ca09fc89a2d70d4ac40946fab48f/reports/pyramidkv-model-comparison-20261103)
+records the common TP2 profiles, both models, and the user-requested one-pair limit.
+Cache occupancy reductions and serving-time changes are reported separately.
 
 ## Install and activate
 

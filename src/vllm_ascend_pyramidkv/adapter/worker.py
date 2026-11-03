@@ -284,11 +284,12 @@ class PyramidKVWorker:
             )
             logger.info(
                 "KV compression worker commit acknowledged request_id=%s "
-                "semantic_tokens=%d physical_tokens=%d destination_blocks=%d",
+                "semantic_tokens=%d physical_tokens=%d destination_blocks=%d worker_rank=%d",
                 request_id,
                 pending.semantic_anchor,
                 pending.physical_anchor,
                 len(pending.block_ids),
+                torch.distributed.get_rank() if torch.distributed.is_initialized() else 0,
             )
             self.pending.pop(request_id, None)
 

@@ -373,29 +373,23 @@ class SchedulerCompressionState:
 
         original_count = getattr(cache_manager, "get_num_blocks_to_allocate", None)
         if original_count is not None:
+            count_signature = inspect.signature(original_count)
 
-            def get_num_blocks_to_allocate(
-                request_id: str,
-                num_tokens: int,
-                new_computed_blocks: Any,
-                total_computed_tokens: int,
-                num_local_computed_tokens: int,
-                num_tokens_main_model: int,
-                apply_admission_cap: bool = False,
-                prefill_end: int | None = None,
-            ) -> Any:
-                options: dict[str, Any] = {"apply_admission_cap": apply_admission_cap}
-                if prefill_end is not None:
-                    options["prefill_end"] = physical(request_id, prefill_end)
-                return original_count(
-                    request_id,
-                    physical(request_id, num_tokens),
-                    new_computed_blocks,
-                    physical(request_id, total_computed_tokens),
-                    physical(request_id, num_local_computed_tokens),
-                    physical(request_id, num_tokens_main_model),
-                    **options,
-                )
+            def get_num_blocks_to_allocate(*args: Any, **kwargs: Any) -> Any:
+                # Dense and hybrid host versions differ in whether they pass
+                # num_local_computed_tokens and prefill_end. Preserve that ABI.
+                bound = count_signature.bind(*args, **kwargs)
+                request_id = bound.arguments["request_id"]
+                for name in (
+                    "num_tokens",
+                    "total_computed_tokens",
+                    "num_local_computed_tokens",
+                    "num_tokens_main_model",
+                    "prefill_end",
+                ):
+                    if bound.arguments.get(name) is not None:
+                        bound.arguments[name] = physical(request_id, bound.arguments[name])
+                return original_count(*bound.args, **bound.kwargs)
 
             cache_manager.get_num_blocks_to_allocate = get_num_blocks_to_allocate
 

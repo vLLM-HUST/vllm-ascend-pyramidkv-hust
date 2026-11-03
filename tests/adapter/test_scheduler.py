@@ -529,7 +529,29 @@ def test_hybrid_cache_groups_keep_distinct_length_spaces() -> None:
         return call
 
     for group, manager in (("attention", attention), ("mamba", mamba)):
-        manager.get_num_blocks_to_allocate = record(group, "count")
+
+        def count(
+            request_id,
+            num_tokens,
+            new_computed_blocks,
+            total_computed_tokens,
+            num_local_computed_tokens,
+            num_tokens_main_model,
+            *,
+            prefill_end=None,
+            group=group,
+        ):
+            return record(group, "count")(
+                request_id,
+                num_tokens,
+                new_computed_blocks,
+                total_computed_tokens,
+                num_local_computed_tokens,
+                num_tokens_main_model,
+                prefill_end=prefill_end,
+            )
+
+        manager.get_num_blocks_to_allocate = count
         manager.allocate_new_blocks = record(group, "allocate")
         manager.remove_skipped_blocks = record(group, "skip")
     state = SchedulerCompressionState(
@@ -584,6 +606,30 @@ def test_manager_free_releases_async_tail_on_abort() -> None:
     assert manager.free(request) == "r"
     assert [block.block_id for block in freed] == [5, 4]
     assert not manager._ascend_pyramidkv_deferred_releases_v3
+
+
+def test_dense_manager_accepts_current_five_argument_admission_contract():
+    scheduler, _, _ = _scheduler()
+    manager = scheduler.kv_cache_manager.coordinator.single_type_managers[0]
+    calls = []
+
+    def count(
+        request_id,
+        num_tokens,
+        new_computed_blocks,
+        total_computed_tokens,
+        num_tokens_main_model,
+        apply_admission_cap=False,
+    ):
+        calls.append((request_id, num_tokens, total_computed_tokens, num_tokens_main_model, apply_admission_cap))
+        return (num_tokens + 127) // 128
+
+    manager.get_num_blocks_to_allocate = count
+    state = SchedulerCompressionState(scheduler, _selection())
+    assert manager.get_num_blocks_to_allocate("r", 301, [], 300, 301) == 3
+    state.active["r"] = ActiveCompression(300, 128)
+    assert manager.get_num_blocks_to_allocate("r", 301, [], 300, 301, apply_admission_cap=True) == 2
+    assert calls == [("r", 301, 300, 301, False), ("r", 129, 128, 129, True)]
 
 
 def test_hybrid_coordinator_translates_only_full_attention_lengths() -> None:

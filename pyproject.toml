@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vllm-ascend-pyramidkv-hust"
-version = "0.4.0rc1"
+version = "0.4.0rc2.dev0"
 description = "Standalone PyramidKV plugin for vLLM Ascend"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -20,6 +20,7 @@ Issues = "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues"
 [project.optional-dependencies]
 provider = ["torch>=2.5"]
 test = [
+  "aiohttp>=3.9",
   "pytest>=8",
   "ruff>=0.12",
   "torch>=2.5",

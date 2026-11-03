@@ -2,7 +2,7 @@
 """Standalone PyramidKV plugin with lazy, default-off host activation."""
 
 __all__ = ["register"]
-__version__ = "0.4.0rc1"
+__version__ = "0.4.0rc2.dev0"
 
 
 def register() -> None:
