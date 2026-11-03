@@ -1,4 +1,6 @@
+import asyncio
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -49,3 +51,47 @@ def test_group_metrics_use_wall_time_and_per_request_tpot():
     assert result["mean_ttft_ms"] == 2000
     assert result["mean_tpot_ms"] == 3000
     assert result["mean_e2e_ms"] == 8000
+
+
+def test_cancelled_stream_keeps_received_tokens_and_failure_receipt(tmp_path):
+    aiohttp = pytest.importorskip("aiohttp")
+    from aiohttp import web
+
+    async def scenario():
+        received = asyncio.Event()
+        release = asyncio.Event()
+
+        async def stalled(request):
+            response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+            await response.prepare(request)
+            await response.write(b'data: {"choices":[{"text":"partial"}]}\n\n')
+            received.set()
+            await release.wait()
+            return response
+
+        app = web.Application()
+        app.router.add_post("/v1/completions", stalled)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 0)
+        await site.start()
+        port = site._server.sockets[0].getsockname()[1]
+        row = {"id": "stalled", "input_tokens": 7, "payload": {"max_tokens": 3}}
+        try:
+            async with aiohttp.ClientSession() as session:
+                task = asyncio.create_task(measure.request(session, f"http://127.0.0.1:{port}", row, tmp_path))
+                await asyncio.wait_for(received.wait(), 2)
+                await asyncio.sleep(0.02)
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+        finally:
+            release.set()
+            await runner.cleanup()
+        events = json.loads((tmp_path / "stalled.events.json").read_text())
+        assert events["events"][0]["data"]["choices"][0]["text"] == "partial"
+        result = json.loads((tmp_path / "stalled.result.json").read_text())
+        assert not result["success"]
+        assert "CancelledError" in result["error"]
+
+    asyncio.run(scenario())

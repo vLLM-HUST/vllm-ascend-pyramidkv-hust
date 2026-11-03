@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import signal
 import statistics
 import time
 from contextlib import suppress
@@ -89,6 +90,7 @@ async def request(session, base, row, output):
     events, lines = [], []
     start = time.perf_counter()
     status = None
+    cancelled = False
     try:
         async with session.post(
             base + "/v1/completions", json=row["payload"], headers={"X-Request-Id": row["id"]}
@@ -105,7 +107,8 @@ async def request(session, base, row, output):
                 events.append({"t": timestamp, "data": "[DONE]" if data == b"[DONE]" else json.loads(data)})
         result = request_metrics(events, start, row["input_tokens"], row["payload"]["max_tokens"])
         result.update(id=row["id"], start=start, end=time.perf_counter(), success=True)
-    except Exception as error:
+    except (Exception, asyncio.CancelledError) as error:
+        cancelled = isinstance(error, asyncio.CancelledError)
         result = dict(
             id=row["id"],
             start=start,
@@ -118,6 +121,8 @@ async def request(session, base, row, output):
     (output / (row["id"] + ".sse")).write_bytes(b"".join(lines))
     write(output / (row["id"] + ".events.json"), {"request": row, "start": start, "events": events})
     write(output / (row["id"] + ".result.json"), result)
+    if cancelled:
+        raise asyncio.CancelledError
     return result
 
 
@@ -136,7 +141,10 @@ async def run(args):
     )
     stop = asyncio.Event()
     stage = "startup"
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1800)) as session:
+    tasks = []
+    main_task = asyncio.current_task()
+    asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, main_task.cancel)
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=600)) as session:
 
         async def telemetry():
             index = 0
@@ -153,14 +161,19 @@ async def run(args):
                             proc = await asyncio.create_subprocess_exec(
                                 "npu-smi", "info", stdout=asyncio.subprocess.PIPE
                             )
-                            stdout, _ = await proc.communicate()
-                            row["npu_smi"] = stdout.decode()
+                            try:
+                                stdout, _ = await asyncio.wait_for(proc.communicate(), 10)
+                                row["npu_smi"] = stdout.decode()
+                            finally:
+                                if proc.returncode is None:
+                                    proc.kill()
+                                    await proc.wait()
                     except Exception as error:
                         row["error"] = str(error)
                     stream.write(json.dumps(row) + "\n")
                     stream.flush()
                     index += 1
-                    with suppress(TimeoutError):
+                    with suppress(asyncio.TimeoutError):
                         await asyncio.wait_for(stop.wait(), 0.2)
 
         monitor = asyncio.create_task(telemetry())
@@ -195,8 +208,13 @@ async def run(args):
                 await asyncio.sleep(1)
             write(args.output / "summary.json", groups)
         finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
             stop.set()
             await monitor
+            asyncio.get_running_loop().remove_signal_handler(signal.SIGTERM)
 
 
 if __name__ == "__main__":

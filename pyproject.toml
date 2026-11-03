@@ -20,6 +20,7 @@ Issues = "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues"
 [project.optional-dependencies]
 provider = ["torch>=2.5"]
 test = [
+  "aiohttp>=3.9",
   "pytest>=8",
   "ruff>=0.12",
   "torch>=2.5",
