@@ -10,6 +10,13 @@ export VLLM_ASCEND_PYRAMIDKV_ENABLED=${PYRAMIDKV_ENABLED:-1}
 export VLLM_ASCEND_PYRAMIDKV_CONFIG="${PYRAMIDKV_CONFIG:-$script_dir/pyramidkv.json}"
 export HF_HUB_OFFLINE=1 PYTHONUNBUFFERED=1 PYTHONHASHSEED=0
 export TASK_QUEUE_ENABLE=1 OMP_NUM_THREADS=4 TORCHINDUCTOR_AUTOGRAD_CACHE=0
+# Dense Qwen2 does not implement Mamba state copying. This is a model-specific
+# cache mode, applied identically in the enabled and disabled hybrid arms.
+model_type=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["model_type"])' "$MODEL_PATH/config.json")
+model_args=()
+if [[ "$model_type" == qwen3_5_moe ]]; then
+  model_args+=(--mamba-cache-mode align)
+fi
 exec python -m vllm.entrypoints.cli.main serve "$MODEL_PATH" \
   --host "${SERVE_HOST:-127.0.0.1}" --port "${SERVE_PORT:-8016}" \
   --served-model-name pyramidkv-model-comparison \
@@ -17,7 +24,7 @@ exec python -m vllm.entrypoints.cli.main serve "$MODEL_PATH" \
   --worker-cls "${PYRAMIDKV_WORKER_CLS:-vllm_ascend_pyramidkv.adapter.host_worker.PyramidKVHostWorker}" \
   --dtype bfloat16 --max-model-len 8192 --max-num-seqs 32 --max-num-batched-tokens 4096 \
   --gpu-memory-utilization 0.8 --block-size 128 --seed 0 \
-  --enable-prefix-caching --mamba-cache-mode align --enable-chunked-prefill --async-scheduling --enforce-eager \
+  --enable-prefix-caching --enable-chunked-prefill --async-scheduling --enforce-eager \
   --enable-prompt-tokens-details --additional-config '{"enable_cpu_binding":false}' \
   --limit-mm-per-prompt '{"image":0,"video":0}' \
-  --generation-config vllm
+  --generation-config vllm "${model_args[@]}"

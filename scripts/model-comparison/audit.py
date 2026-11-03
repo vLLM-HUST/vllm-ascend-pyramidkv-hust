@@ -50,3 +50,19 @@ def hbm(text):
     if result.keys() != {"1", "6"}:
         raise ValueError("Missing physical card1 or card6 HBM")
     return result
+
+
+def pool(metrics):
+    rows = re.findall(r"^vllm:cache_config_info\{([^\n]+)\} \S+$", metrics, re.MULTILINE)
+    if len(rows) != 1:
+        raise ValueError("Missing or ambiguous native cache configuration")
+    labels = dict(re.findall(r'(?:^|,)(\w+)="([^"]*)"', rows[0]))
+    try:
+        return {
+            "physical_blocks": int(labels["num_gpu_blocks"]),
+            "logical_block_size": int(labels["block_size"]),
+            "effective_capacity_tokens": int(labels["kv_cache_size_tokens"]),
+            "max_concurrency_at_max_model_len": float(labels["kv_cache_max_concurrency"]),
+        }
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("Incomplete native cache configuration") from error

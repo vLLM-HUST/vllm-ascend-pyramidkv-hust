@@ -54,3 +54,19 @@ def test_hbm_reads_both_physical_cards_and_rejects_missing_card():
     assert audit.hbm(text) == {"1": 52100, "6": 52200}
     with pytest.raises(ValueError):
         audit.hbm(text.split("| 6 910B2")[0])
+
+
+def test_hybrid_pool_uses_native_blocks_not_effective_token_capacity():
+    metrics = (
+        "# HELP vllm:cache_config_info cache configuration\n"
+        'vllm:cache_config_info{block_size="2048",num_gpu_blocks="787",'
+        'kv_cache_size_tokens="644710",kv_cache_max_concurrency="78.7"} 1.0\n'
+    )
+    assert audit.pool(metrics) == {
+        "physical_blocks": 787,
+        "logical_block_size": 2048,
+        "effective_capacity_tokens": 644710,
+        "max_concurrency_at_max_model_len": 78.7,
+    }
+    with pytest.raises(ValueError):
+        audit.pool(metrics.replace('num_gpu_blocks="787",', ""))
