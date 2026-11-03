@@ -7,11 +7,16 @@ plugin at runtime. The general entry point is
 `vllm.general_plugins:ascend_pyramidkv`; importing this package or discovering
 its disabled entry point does not import PyTorch or vLLM.
 
-The serving compatibility target remains **Qwen/Qwen3.5-35B-A3B**, BF16, TP=2,
+The Qwen3.5 serving profile is **Qwen/Qwen3.5-35B-A3B**, BF16, TP=2,
 CANN 9.1, APC, MTP2, async scheduling, chunked prefill,
 `FULL_AND_PIECEWISE`, and `mamba_cache_mode=align`. Unsupported model/cache/host
 seams fail closed. A manifest version range is a discovery filter, not a promise
 that every vLLM/Ascend combination works. See the [support matrix](docs/support-matrix.md).
+
+Source builds after 0.4.0rc1 additionally admit the exact Qwen2.5-14B BF16,
+TP1 eager profile. Its [launcher](scripts/qwen25/serve.sh) restores the
+historical 7168/512, concurrency32 evaluation settings. This source change is
+not present in the published 0.4.0rc1 wheel.
 
 ## Install and activate
 

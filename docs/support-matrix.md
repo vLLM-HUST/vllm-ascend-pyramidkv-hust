@@ -1,7 +1,7 @@
 # Standalone support boundary
 
-The independent adapter preserves the existing narrow compatibility gate.
-Distribution independence does not broaden model or host support.
+The independent adapter admits two exact profiles on the pinned host below.
+Qwen2.5 support is added after 0.4.0rc1; it is absent from that public wheel.
 
 | Dimension | Accepted target |
 | --- | --- |
@@ -14,6 +14,16 @@ Distribution independence does not broaden model or host support.
 | Graph | `FULL_AND_PIECEWISE`, checked layer-aware FIA replay |
 | Cache | Standard Ascend attention, 128-token kernel pages, supported logical pages, Mamba `align` |
 | Activation | Independent general plugin; direct environment or optional Manager |
+
+The Qwen2.5 profile accepts only official `Qwen/Qwen2.5-14B-Instruct`:
+48 full-attention layers, Q/KV heads 40/8, head and rotary dimensions 128,
+no RoPE scaling, BF16, TP=1, eager execution and no speculative decoding.
+It requires the same APC/async/chunked scheduling and standard Ascend backend.
+Use [`scripts/qwen25/serve.sh`](../scripts/qwen25/serve.sh) with
+`MODEL_PATH` and `PYRAMIDKV_ENABLED=0` or `1`. It fixes the historical
+8192 context, 2048 batched tokens, 32 sequences, 128-token blocks and 0.8
+memory utilization; its compression configuration is 512/beta20.
+This admission boundary alone does not certify task quality or speedup.
 
 The reproduced source pair is vLLM
 `d0f22d2bda562156e4dbf433ce645e1769b4f804` and Ascend

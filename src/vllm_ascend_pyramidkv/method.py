@@ -162,17 +162,23 @@ class PyramidKVMethod(KVCompressionMethod):
     def compatibility_reasons(self, runner: Any) -> tuple[str, ...]:
         reasons: list[str] = []
         shape = self.model_shape
-        if shape.model_type not in QWEN35_MODEL_TYPES:
-            reasons.append(f"only {TARGET_MODEL_ID} ({TARGET_MODEL_DISPLAY_NAME}) is staged for serving")
-        if (
+        dense = shape.model_type == "qwen2"
+        geometry = (
             shape.num_layers,
             shape.num_attention_heads,
             shape.num_kv_heads,
             shape.head_dim,
             shape.effective_rotary_dim,
             shape.full_attention_layer_indices,
-        ) != (40, 16, 2, 256, 64, QWEN35_FULL_ATTENTION_LAYERS):
-            reasons.append(f"{TARGET_MODEL_ID} attention geometry is required")
+        )
+        if dense:
+            if geometry != (48, 40, 8, 128, 128, tuple(range(48))) or shape.has_rope_scaling:
+                reasons.append("Qwen2.5-14B unscaled full-attention geometry is required")
+        else:
+            if shape.model_type not in QWEN35_MODEL_TYPES:
+                reasons.append(f"only Qwen2.5-14B and {TARGET_MODEL_ID} are staged for serving")
+            if geometry != (40, 16, 2, 256, 64, QWEN35_FULL_ATTENTION_LAYERS):
+                reasons.append(f"{TARGET_MODEL_ID} attention geometry is required")
 
         model = self.vllm_config.model_config
         if str(getattr(model, "dtype", "")) not in {"bfloat16", "torch.bfloat16"}:
@@ -180,15 +186,21 @@ class PyramidKVMethod(KVCompressionMethod):
         if getattr(model, "quantization", None) is not None:
             reasons.append("model quantization is unsupported")
         parallel = self.vllm_config.parallel_config
-        if int(getattr(parallel, "tensor_parallel_size", 1)) != 2:
-            reasons.append("the staged Qwen3.5 profile requires TP=2")
+        expected_tp = 1 if dense else 2
+        if int(getattr(parallel, "tensor_parallel_size", 1)) != expected_tp:
+            reasons.append(f"the staged profile requires TP={expected_tp}")
         cache = self.vllm_config.cache_config
-        if getattr(cache, "mamba_cache_mode", None) != "align":
+        if not dense and getattr(cache, "mamba_cache_mode", None) != "align":
             reasons.append("Qwen3.5 requires mamba_cache_mode='align'")
         if not bool(getattr(cache, "enable_prefix_caching", False)):
             reasons.append("the staged target requires prefix caching")
         speculative = getattr(self.vllm_config, "speculative_config", None)
-        if speculative is None or (
+        if dense:
+            if speculative is not None:
+                reasons.append("Qwen2.5 does not support speculative decoding")
+            if not bool(getattr(model, "enforce_eager", False)):
+                reasons.append("Qwen2.5 requires enforce_eager")
+        elif speculative is None or (
             getattr(speculative, "method", None) != "mtp"
             or getattr(speculative, "num_speculative_tokens", None) != 2
             or getattr(speculative, "num_speculative_tokens_per_batch_size", None)
@@ -202,8 +214,9 @@ class PyramidKVMethod(KVCompressionMethod):
             reasons.append("the staged target requires chunked prefill")
 
         mode = getattr(getattr(runner, "compilation_config", None), "cudagraph_mode", None)
-        if getattr(mode, "name", str(mode)) != "FULL_AND_PIECEWISE":
-            reasons.append("the staged target requires FULL_AND_PIECEWISE execution")
+        expected_mode = "NONE" if dense else "FULL_AND_PIECEWISE"
+        if getattr(mode, "name", str(mode)) != expected_mode:
+            reasons.append(f"the staged target requires {expected_mode} execution")
         backend = getattr(runner, "attn_backend", None)
         backend_name = backend.__name__ if isinstance(backend, type) else type(backend).__name__
         if backend_name != "AscendAttentionBackend":
