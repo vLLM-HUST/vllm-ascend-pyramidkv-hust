@@ -21,6 +21,9 @@ batch budget to fit hybrid prefill alignment alongside decode.
 The published 0.4.0rc1 release is the earlier Qwen3.5 graph/MTP2 candidate.
 See the [matched TP1 diagnostic report](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/51c6238fb7605db7bd8aeef506465cac70d82164/reports/pyramidkv-qwen25-matched-20261103)
 for source identity, limitations and raw-data verification.
+The [single-round model comparison](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/6c136e521fa6ca09fc89a2d70d4ac40946fab48f/reports/pyramidkv-model-comparison-20261103)
+records the common TP2 profiles, both models, and the user-requested one-pair limit.
+Cache occupancy reductions and serving-time changes are reported separately.
 
 ## Install and activate
 

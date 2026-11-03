@@ -37,9 +37,10 @@ its absolute metrics against the earlier legacy-random TP1 run as a TP effect.
 
 Per lifecycle preserve the established short48×1024/256 at rate1, then long
 32×7168/512 at rateinf/concurrency32, with one first-prompt readiness request
-before each cohort, no extra warmups. Launch12 fresh lifecycles: three paired
-OFF/ON runs for each model. Freeze the exact ordering before measurement and
-alternate model pair order by round. No local tests/audits/tokenization during
+before each cohort, no extra warmups. The original freeze planned12 fresh lifecycles with three pairs per model.
+After the first Qwen2.5 pair completed, the user explicitly reduced execution
+to one OFF/ON pair per model. Retain the original contract and record this
+amendment; execute only its first four lifecycles, without parameter changes. No local tests/audits/tokenization during
 measured requests. Stop at the first failure, keep all incomplete data, and do
 not selectively retry or tune parameters after viewing formal results.
 
@@ -47,9 +48,9 @@ Request timeout600s, client deadline3600s, startup deadline1200s, graceful
 shutdown before forced termination. Preserve partial streams on cancellation.
 Record raw SSE/timestamps, usage, pool capacity, KV usage, preemptions, HBM on
 both cards, and scheduler/worker acknowledgements by TP rank. Independent
-recomputation verifies all requests and reports each run plus arithmetic means
-of three metrics for each arm. Compare ON/OFF percentage changes within each
-model, then compare those changes between models.
+recomputation verifies all320 measured and8 readiness requests. Report the single
+observation for each arm and ON/OFF changes within each model, then compare those
+changes between models. Do not claim a repeatability estimate from one round.
 
 ## Verification and delivery
 

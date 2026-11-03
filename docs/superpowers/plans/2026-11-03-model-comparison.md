@@ -28,11 +28,11 @@ keep failed samples and no task-quality or architecture-only causal claims.
 - [ ] Add shared launch/config and freeze common-token prompt construction.
 - [ ] Run focused/full tests and native OFF/ON preflights for both models.
 - [ ] Review completed code and repair substantive findings with regressions.
-- [ ] Freeze candidate commit/wheel, runtime, models, requests and12-run contract.
+- [ ] Freeze candidate commit/wheel, runtime, models, requests and original12-run contract; preserve the later one-round user amendment.
 
 ## Task 2: Paired measurement and verification
 
-- [ ] Execute12 lifecycles, retaining all requests and failures.
+- [ ] Execute the user-amended four lifecycles, retaining all requests and failed or canceled startups.
 - [ ] Recompute request metrics and aggregates; validate two-rank transactions,
   real lengths, identical payloads, pool/HBM samples and zero final active state.
 - [ ] Compare within-model effects and explain observed cache pressure.

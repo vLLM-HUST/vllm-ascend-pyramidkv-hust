@@ -32,6 +32,12 @@ both models. A 2048 budget would leave less than one 2048-token hybrid alignment
 block after scheduling decode, preventing admission of another long prefill.
 The native hybrid logical page layout is retained.
 
+Native boundary and concurrent preflights, both TP-rank acknowledgements, and
+the user-amended single-round comparison are preserved in the
+[TP2 diagnostic report](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/6c136e521fa6ca09fc89a2d70d4ac40946fab48f/reports/pyramidkv-model-comparison-20261103).
+It identifies the measured candidate and separates active cache occupancy from
+preallocated pool capacity and device HBM.
+
 This admission boundary alone does not certify task quality or speedup.
 
 The reproduced source pair is vLLM
