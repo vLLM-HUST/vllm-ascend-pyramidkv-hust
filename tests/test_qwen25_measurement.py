@@ -1,9 +1,14 @@
 import asyncio
+import contextlib
 import importlib.util
+import io
 import json
+import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from aiohttp import web
 
 SPEC = importlib.util.spec_from_file_location("qwen25_measure", Path(__file__).parents[1] / "scripts/qwen25/measure.py")
 measure = importlib.util.module_from_spec(SPEC)
@@ -95,3 +100,98 @@ def test_cancelled_stream_keeps_received_tokens_and_failure_receipt(tmp_path):
         assert "CancelledError" in result["error"]
 
     asyncio.run(scenario())
+
+
+async def _check_concurrency():
+    client = measure
+    arrived = set()
+    all_arrived = asyncio.Event()
+    release = asyncio.Event()
+    metrics_during = asyncio.Event()
+
+    async def completion(request):
+        identity = request.headers["X-Request-Id"]
+        if identity != "long-readiness":
+            arrived.add(identity)
+            if len(arrived) == 128:
+                all_arrived.set()
+            await release.wait()
+        return web.Response(
+            text=(
+                'data: {"choices":[{"text":"a"}]}\n\n'
+                'data: {"choices":[{"text":"b"}]}\n\n'
+                'data: {"choices":[],"usage":{"prompt_tokens":1,"completion_tokens":2}}\n\n'
+                "data: [DONE]\n\n"
+            ),
+            content_type="text/event-stream",
+        )
+
+    async def metrics(request):
+        if len(arrived) == 128 and not release.is_set():
+            metrics_during.set()
+        return web.Response(text="vllm:kv_cache_usage_perc 0\n")
+
+    app = web.Application()
+    app.router.add_post("/v1/completions", completion)
+    app.router.add_get("/metrics", metrics)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    try:
+        with tempfile.TemporaryDirectory(prefix="client-protocol-fixture-") as tmp:
+            root = Path(tmp)
+            requests = root / "input.json"
+            requests.write_text(
+                json.dumps(
+                    {
+                        "long": [
+                            {
+                                "id": f"long-{i}",
+                                "input_tokens": 1,
+                                "delay_seconds": 0,
+                                "payload": {"prompt": "fixture", "max_tokens": 2},
+                            }
+                            for i in range(128)
+                        ]
+                    }
+                )
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                task = asyncio.create_task(
+                    client.run(
+                        SimpleNamespace(
+                            requests=requests, output=root / "output", base=f"http://127.0.0.1:{port}", kinds=["long"]
+                        )
+                    )
+                )
+                try:
+                    with contextlib.suppress(asyncio.TimeoutError):
+                        await asyncio.wait_for(all_arrived.wait(), 3)
+                    count = len(arrived)
+                    if count == 128:
+                        with contextlib.suppress(asyncio.TimeoutError):
+                            await asyncio.wait_for(metrics_during.wait(), 3)
+                    telemetry_ok = metrics_during.is_set()
+                finally:
+                    release.set()
+                    await asyncio.wait_for(task, 15)
+            assert count == 128, f"Only {count}/128 requests arrived before any completed"
+            assert telemetry_ok, "Metrics were blocked while all 128 requests were in flight"
+            assert len(json.loads((root / "output/long/group.json").read_text())["results"]) == 128
+    finally:
+        await runner.cleanup()
+    print("PASS: 128 simultaneous held requests and live metrics, using real measurement client")
+
+
+def test_128_inflight_requests_leave_telemetry_live(monkeypatch):
+    # Hardware polling is external to this real HTTP concurrency test.
+    async def completed_poll(*args, **kwargs):
+        async def communicate():
+            return b"", b""
+
+        return SimpleNamespace(returncode=0, communicate=communicate)
+
+    monkeypatch.setattr(measure.asyncio, "create_subprocess_exec", completed_poll)
+    asyncio.run(_check_concurrency())

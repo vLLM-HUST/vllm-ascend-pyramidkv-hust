@@ -144,7 +144,9 @@ async def run(args):
     tasks = []
     main_task = asyncio.current_task()
     asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, main_task.cancel)
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=600)) as session:
+    async with aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=600), connector=aiohttp.TCPConnector(limit=0)
+    ) as session:
 
         async def telemetry():
             index = 0
