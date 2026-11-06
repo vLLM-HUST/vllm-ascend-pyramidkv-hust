@@ -1,5 +1,8 @@
 # Independent adapter validation protocol
 
+For `0.4.0rc2.dev0`, also apply the [Qwen3.5 C128 release acceptance gates](release-0.4.0rc2-validation.md),
+including complete request-level compression coverage and the resumed-prefill regression.
+
 Run against the exact source or installed wheel under review. Preserve commands,
 source identities, package metadata, device identity and failures. Do not reuse
 historical shared-adapter receipts as evidence for this implementation.

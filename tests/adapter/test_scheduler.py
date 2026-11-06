@@ -202,6 +202,77 @@ def test_compression_plan_survives_worker_message_pickle() -> None:
     assert getattr(copied, PLAN_ATTRIBUTE)["r"] == plan
 
 
+def _replay_scheduler():
+    from vllm.v1.core.sched.scheduler import Scheduler
+
+    scheduler, manager, freed = _scheduler(
+        block_size=32768,
+        hybrid_model_type="qwen3_5_moe_text",
+        attention_block_size=2048,
+        mamba_cache_mode="align",
+        async_scheduling=True,
+    )
+    scheduler.cache_config = SimpleNamespace(block_size=2048)
+    scheduler.use_eagle = False
+    scheduler.need_mamba_block_aligned_split = True
+    scheduler._mamba_block_aligned_split = Scheduler._mamba_block_aligned_split.__get__(scheduler)
+    request = scheduler.requests["r"]
+    request.num_prompt_tokens = 7168
+    request.num_tokens = 7169  # A preempted request already has one output token.
+    request.num_computed_tokens = 0
+    manager.req_to_blocks["r"] = [SimpleNamespace(block_id=i) for i in (3, 4, 5, 6)]
+    selection = ProviderSelection.from_mapping(
+        {"method": "pyramidkv", "method_config": {"kv_budget": 2048, "recompute_window": 8}}
+    )
+    return scheduler, manager, freed, selection
+
+
+@pytest.mark.parametrize("cached", [False, True])
+def test_resumed_prefill_stops_at_prompt_boundary_and_commits(cached):
+    scheduler, manager, freed, selection = _replay_scheduler()
+    request = scheduler.requests["r"]
+    request.num_computed_tokens = 0 if cached else 6144
+    # Characterize the pinned host: native replay crosses the initial boundary.
+    args = (1025, 6144 if cached else 0)
+    assert scheduler._mamba_block_aligned_split(request, *args) == 1025
+    state = SchedulerCompressionState(scheduler, selection)
+
+    scheduled = scheduler._mamba_block_aligned_split(request, *args)
+    assert scheduled == 1024
+    request.num_computed_tokens = 6144 + scheduled
+    output = SimpleNamespace(num_scheduled_tokens={"r": scheduled}, finished_req_ids=set(), preempted_req_ids=set())
+    state.after_schedule(output)
+    assert getattr(output, PLAN_ATTRIBUTE)["r"] == CompressionPlan(7168, 2048, (3, 4, 5, 6), (50,))
+    state.after_output(output)
+    state.after_model_output()
+    assert state.active["r"] == ActiveCompression(7168, 2048)
+    assert [block.block_id for block in manager.req_to_blocks["r"]] == [50]
+    assert request.next_decode_eligible_step == 7
+    assert not state.pending
+
+
+@pytest.mark.parametrize(
+    "computed,new_tokens,prompt,active,expected",
+    [
+        (0, 1024, 7168, False, 0),
+        (4096, 2048, 7168, False, 2048),
+        (7168, 1, 7168, False, 1),
+        (6144, 1025, 7168, True, 1025),
+        (2048, 1025, 3072, False, 1025),
+    ],
+)
+def test_replay_boundary_preserves_native_non_crossing_steps(computed, new_tokens, prompt, active, expected):
+    scheduler, _, _, selection = _replay_scheduler()
+    request = scheduler.requests["r"]
+    request.num_prompt_tokens = prompt
+    request.num_tokens = prompt + 1
+    request.num_computed_tokens = computed
+    state = SchedulerCompressionState(scheduler, selection)
+    if active:
+        state.active["r"] = ActiveCompression(6144, 2048)
+    assert scheduler._mamba_block_aligned_split(request, new_tokens) == expected
+
+
 def test_qwen35_scheduler_separates_alignment_from_attention_pages() -> None:
     scheduler, _, _ = _scheduler(
         block_size=32768,
