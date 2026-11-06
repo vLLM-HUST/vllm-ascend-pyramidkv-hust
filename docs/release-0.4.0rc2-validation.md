@@ -1,5 +1,9 @@
 # 0.4.0rc2.dev0 validation and release acceptance
 
+The [published candidate receipt](releases/0.4.0rc2.dev0.md) records the completed
+November 6 acceptance, exact artifacts, canonical raw evidence and remaining
+qualification boundaries. The gates below remain the reproduction requirements.
+
 This development candidate repairs an initial-compression boundary in Qwen3.5
 hybrid replay. After preemption, native scheduling includes already-generated
 tokens: a request with prompt length 7168, one generated token and 6144 computed

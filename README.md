@@ -13,7 +13,7 @@ CANN 9.1, APC, MTP2, async scheduling, chunked prefill,
 seams fail closed. A manifest version range is a discovery filter, not a promise
 that every vLLM/Ascend combination works. See the [support matrix](docs/support-matrix.md).
 
-The current source candidate `0.4.0rc2.dev0` additionally admits exact
+The published development candidate `0.4.0rc2.dev0` additionally admits exact
 Qwen2.5-14B BF16 TP1/TP2 eager and Qwen3.5-35B TP2 eager/no-MTP profiles.
 The [TP1 launcher](scripts/qwen25/serve.sh) retains historical settings;
 the [shared TP2 launcher](scripts/model-comparison/serve.sh) uses a 4096-token
@@ -28,8 +28,12 @@ Cache occupancy reductions and serving-time changes are reported separately.
 ## Install and activate
 
 Public candidate artifacts and checksum-bound installation are documented in the
-[0.4.0rc1 release notes](docs/releases/0.4.0rc1.md). This release keeps the
-qualified host boundary; current-version effect evaluation remains open.
+[0.4.0rc2.dev0 release notes](docs/releases/0.4.0rc2.dev0.md), including the
+completed long-109 functional acceptance and the remaining qualification work.
+The earlier [0.4.0rc1 release](docs/releases/0.4.0rc1.md) has its own completed
+[effect evaluation](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/5beebde98d8f2aad20becb2e9e5c17b07f9e5cf9/reports/pyramidkv-standalone-effects-20261103).
+Those quality and paired-service results remain bound to rc1; they do not qualify
+the new rc2 artifact. Both releases keep the pinned host boundary.
 
 Provision a matched vLLM, vLLM-Ascend, torch/torch-npu and CANN stack first.
 The wheel intentionally does not ask pip to replace hardware-specific host

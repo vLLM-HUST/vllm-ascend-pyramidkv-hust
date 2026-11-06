@@ -17,9 +17,16 @@ not its installed version. See [support boundaries](support-matrix.md).
 ## Public candidate artifacts
 
 For a released package, download the wheel, sdist, provenance and checksums from
-the [0.4.0rc1 GitHub prerelease](releases/0.4.0rc1.md). Verify the checksums and
+the [0.4.0rc2.dev0 GitHub prerelease](releases/0.4.0rc2.dev0.md). Verify the checksums and
 install the wheel with `--no-deps` into the prepared host environment. Extract the
 sdist for the launcher and configuration below. No PyPI availability is implied.
+
+The rc2 notes distinguish its accepted C128 eager replay check from the earlier
+rc1 graph/MTP2 and quality evidence. The shared model-comparison launcher defaults
+to C32 and an automatic pool; reproducing the C128/558-block acceptance requires
+the frozen launch and request bank linked in the rc2 evidence, not just that
+launcher's defaults. Use [rc1's pinned artifacts](releases/0.4.0rc1.md) when
+reproducing its separately qualified results.
 
 ## Direct launch
 
