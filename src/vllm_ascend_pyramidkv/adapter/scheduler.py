@@ -141,6 +141,7 @@ class SchedulerCompressionState:
         self._install_attention_cache_hook()
         if not coordinator_hooks:
             self._install_attention_length_hooks()
+        self._install_prefill_boundary_hook()
         logger.info(
             "Ascend KV compression scheduler bound threshold_tokens=%d "
             "target_tokens=%d min_output_tokens=%d scheduler_alignment=%d "
@@ -152,6 +153,54 @@ class SchedulerCompressionState:
             self.scheduler_block_size,
             self.required_recompute_tokens,
         )
+
+    def _install_prefill_boundary_hook(self) -> None:
+        """Keep hybrid replay from skipping the initial compression barrier."""
+        scheduler = self.scheduler
+        if not getattr(scheduler, "need_mamba_block_aligned_split", False):
+            return
+        original_split = scheduler._mamba_block_aligned_split
+
+        def split(
+            request: Any,
+            num_new_tokens: int,
+            num_new_local_computed_tokens: int = 0,
+            num_external_computed_tokens: int = 0,
+            num_uncached_common_prefix_tokens: int = 0,
+        ) -> int:
+            scheduled = original_split(
+                request,
+                num_new_tokens,
+                num_new_local_computed_tokens,
+                num_external_computed_tokens,
+                num_uncached_common_prefix_tokens,
+            )
+            prompt = int(request.num_prompt_tokens)
+            computed = int(request.num_computed_tokens) + num_new_local_computed_tokens + num_external_computed_tokens
+            # Native replay includes previously generated tokens. A step from
+            # 6144 to 7169 would never hit a 7168-token prompt's compression
+            # barrier. Split before allocation/forward so the query tail and
+            # both scheduler/worker semantic anchors remain prompt-aligned.
+            if (
+                request.request_id not in self.active
+                and request.request_id not in self.pending
+                and prompt >= self.threshold
+                and _request_max_tokens(request) >= self.min_output_tokens
+                and computed < prompt < computed + scheduled
+            ):
+                logger.info(
+                    "KV compression replay boundary request_id=%s computed_tokens=%d "
+                    "scheduled_tokens=%d capped_tokens=%d prompt_tokens=%d",
+                    request.request_id,
+                    computed,
+                    scheduled,
+                    prompt - computed,
+                    prompt,
+                )
+                return prompt - computed
+            return scheduled
+
+        scheduler._mamba_block_aligned_split = split
 
     def prefix_cache_hit_cap(self, request: Any) -> int | None:
         """Limit APC so an eligible method receives its required query suffix."""
